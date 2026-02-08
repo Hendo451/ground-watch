@@ -285,7 +285,7 @@ const Dashboard = () => {
                                     <td className="px-4 py-3 text-muted-foreground">
                                       {startDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                                     </td>
-                                    <td className="px-4 py-3 text-muted-foreground">
+                                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                                       {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </td>
                                     <td className="px-4 py-3">
