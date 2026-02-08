@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { ChevronDown, Check } from 'lucide-react';
@@ -63,8 +63,8 @@ export const PhoneInput = ({ value, onChange, placeholder = "400 111 222", requi
 
   return (
     <div className="flex gap-2">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+        <PopoverPrimitive.Trigger asChild>
           <Button
             variant="outline"
             role="combobox"
@@ -77,11 +77,21 @@ export const PhoneInput = ({ value, onChange, placeholder = "400 111 222", requi
             </span>
             <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+        </PopoverPrimitive.Trigger>
+
+        {/* NOTE: Not portalled. When used inside a modal dialog, portalling to <body>
+            can inherit pointer-events / scroll-lock restrictions and break scrolling. */}
+        <PopoverPrimitive.Content
+          align="start"
+          sideOffset={4}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className={cn(
+            "z-50 w-[280px] rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none pointer-events-auto",
+          )}
+        >
           <Command>
             <CommandInput placeholder="Search country..." />
-            <CommandList className="max-h-[200px] overflow-y-auto">
+            <CommandList className="max-h-[240px] overflow-y-auto overscroll-contain">
               <CommandEmpty>No country found.</CommandEmpty>
               <CommandGroup>
                 {COUNTRIES.map((country) => (
@@ -107,8 +117,8 @@ export const PhoneInput = ({ value, onChange, placeholder = "400 111 222", requi
               </CommandGroup>
             </CommandList>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Root>
       <Input
         id={id}
         value={nationalNumber}
