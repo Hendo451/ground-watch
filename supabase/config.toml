@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-sms-alert]
 verify_jwt = false
+
+[functions.lightning-history]
+verify_jwt = false
