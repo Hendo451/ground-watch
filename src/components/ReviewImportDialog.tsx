@@ -150,10 +150,10 @@ export const ReviewImportDialog = ({
           
           {/* Missing Venues Alert */}
           {missingVenues.length > 0 && (
-            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 space-y-2">
-              <p className="text-sm font-medium text-warning-foreground flex items-center gap-2">
+            <div className="bg-warning/20 border-2 border-warning rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold text-warning flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                {missingVenues.length} venue{missingVenues.length > 1 ? 's' : ''} not found - add them to continue
+                {missingVenues.length} venue{missingVenues.length > 1 ? 's' : ''} not found — add them to continue
               </p>
               <div className="flex flex-wrap gap-2">
                 {missingVenues.map(venueName => {
