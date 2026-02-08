@@ -62,19 +62,25 @@ Deno.serve(async (req) => {
 
     // Get active games with venue data
     const now = new Date().toISOString();
+    console.log("Checking for active games at:", now);
+    
     const { data: games, error: gamesError } = await supabase
       .from("games")
       .select("id, venue_id, status, countdown_end, venues(id, name, latitude, longitude, safe_zone_radius)")
       .lte("start_time", now)
       .gte("end_time", now);
 
+    console.log("Games query result:", { games, error: gamesError });
+
     if (gamesError) throw gamesError;
     if (!games || games.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No active games to monitor" }),
+        JSON.stringify({ message: "No active games to monitor", checkedAt: now }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Found ${games.length} active games to monitor`);
 
     const results: { venueId: string; venueName: string; status: string; closestStrike?: number }[] = [];
 
@@ -86,10 +92,16 @@ Deno.serve(async (req) => {
       const radius = 30; // km - captures both warning (16-30km) and danger (<16km) zones
       const xweatherUrl = `https://data.api.xweather.com/lightning/closest?p=${venue.latitude},${venue.longitude}&radius=${radius}km&limit=10&client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
 
+      console.log(`Checking lightning for ${venue.name} at ${venue.latitude},${venue.longitude}`);
+      
       const xweatherRes = await fetch(xweatherUrl);
       const xweatherData: XweatherResponse = await xweatherRes.json();
+      
+      console.log(`Xweather response for ${venue.name}:`, JSON.stringify(xweatherData).substring(0, 500));
 
       if (!xweatherData.success || !xweatherData.response || xweatherData.response.length === 0) {
+        // No lightning detected
+        console.log(`No lightning detected near ${venue.name}`);
         // No lightning detected - check if we can go back to green
         if (game.status === "red" && game.countdown_end) {
           const countdownEnd = new Date(game.countdown_end);
@@ -117,7 +129,10 @@ Deno.serve(async (req) => {
             .from("games")
             .update({ status: "green" })
             .eq("id", game.id);
-          results.push({ venueId: venue.id, venueName: venue.name, status: "green" });
+          results.push({ venueId: venue.id, venueName: venue.name, status: "green (cleared)" });
+        } else {
+          // Already green, no action needed
+          results.push({ venueId: venue.id, venueName: venue.name, status: "green (clear)" });
         }
         continue;
       }
