@@ -34,17 +34,32 @@ export const ReviewImportDialog = ({
 }: ReviewImportDialogProps) => {
   const [games, setGames] = useState<ReviewGame[]>([]);
 
+  // Auto-match venue names to existing venues
+  const findMatchingVenue = (venueName: string): string => {
+    if (!venueName || venues.length === 0) return '';
+    const lowerName = venueName.toLowerCase();
+    // Try exact match first
+    const exactMatch = venues.find(v => v.name.toLowerCase() === lowerName);
+    if (exactMatch) return exactMatch.id;
+    // Try partial match (venue name contains or is contained in extracted name)
+    const partialMatch = venues.find(v => 
+      lowerName.includes(v.name.toLowerCase()) || 
+      v.name.toLowerCase().includes(lowerName.split(',')[0].trim().toLowerCase())
+    );
+    return partialMatch?.id || '';
+  };
+
   // Reset games when extractedGames changes or dialog opens
   useEffect(() => {
     if (extractedGames.length > 0) {
       setGames(extractedGames.map((g, i) => ({
         ...g,
         id: `temp-${i}`,
-        venueId: '',
+        venueId: findMatchingVenue(g.venue),
         officialId: '',
       })));
     }
-  }, [extractedGames]);
+  }, [extractedGames, venues]);
 
   const updateGame = (id: string, field: keyof ReviewGame, value: string) => {
     setGames(prev => prev.map(g => g.id === id ? { ...g, [field]: value } : g));
