@@ -1,11 +1,16 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dumbbell, Loader2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Dumbbell, CalendarIcon, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Venue, Grade } from '@/hooks/useData';
+import { TimePicker } from './TimePicker';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -33,11 +38,12 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
   const [dayOfWeek, setDayOfWeek] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!startDate) return;
     onAdd({
       name,
       venue_id: venueId && venueId !== '__none__' ? venueId : undefined,
@@ -45,8 +51,8 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
       day_of_week: parseInt(dayOfWeek),
       start_time: startTime,
       end_time: endTime,
-      start_date: startDate,
-      end_date: endDate || undefined,
+      start_date: format(startDate, 'yyyy-MM-dd'),
+      end_date: endDate ? format(endDate, 'yyyy-MM-dd') : undefined,
     });
     setOpen(false);
     resetForm();
@@ -59,9 +65,11 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
     setDayOfWeek('');
     setStartTime('');
     setEndTime('');
-    setStartDate('');
-    setEndDate('');
+    setStartDate(undefined);
+    setEndDate(undefined);
   };
+
+  const isValid = name && dayOfWeek && startTime && endTime && startDate;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -119,7 +127,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
 
           <div className="space-y-2">
             <Label htmlFor="training-day">Day of Week</Label>
-            <Select value={dayOfWeek} onValueChange={setDayOfWeek} required>
+            <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
               <SelectTrigger>
                 <SelectValue placeholder="Select day" />
               </SelectTrigger>
@@ -131,52 +139,73 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="training-start-time">Start Time</Label>
-              <Input 
-                id="training-start-time" 
-                type="time" 
-                value={startTime} 
-                onChange={e => setStartTime(e.target.value)} 
-                required 
-              />
+              <Label>Start Time</Label>
+              <TimePicker value={startTime} onChange={setStartTime} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="training-end-time">End Time</Label>
-              <Input 
-                id="training-end-time" 
-                type="time" 
-                value={endTime} 
-                onChange={e => setEndTime(e.target.value)} 
-                required 
-              />
+              <Label>End Time</Label>
+              <TimePicker value={endTime} onChange={setEndTime} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="training-start-date">Starts From</Label>
-              <Input 
-                id="training-start-date" 
-                type="date" 
-                value={startDate} 
-                onChange={e => setStartDate(e.target.value)} 
-                required 
-              />
+              <Label>Starts From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PP") : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="training-end-date">Ends</Label>
-              <Input 
-                id="training-end-date" 
-                type="date" 
-                value={endDate} 
-                onChange={e => setEndDate(e.target.value)} 
-              />
+              <Label>Ends</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PP") : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full" disabled={isPending || !isValid}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Schedule Training
           </Button>

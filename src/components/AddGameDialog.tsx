@@ -1,11 +1,16 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarPlus, Loader2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarPlus, CalendarIcon, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Venue, Grade } from '@/hooks/useData';
+import { TimePicker } from './TimePicker';
 
 interface AddGameDialogProps {
   venues: Venue[];
@@ -19,14 +24,16 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
   const [name, setName] = useState('');
   const [venueId, setVenueId] = useState('');
   const [gradeId, setGradeId] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const [date, setDate] = useState<Date>();
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const start_time = `${startDate}T${startTime}:00`;
-    const end_time = `${startDate}T${endTime}:00`; // Same day as start
+    if (!date) return;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const start_time = `${dateStr}T${startTime}:00`;
+    const end_time = `${dateStr}T${endTime}:00`;
     onAdd({ 
       name: name || undefined, 
       venue_id: venueId, 
@@ -35,8 +42,19 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
       end_time 
     });
     setOpen(false);
-    setName(''); setVenueId(''); setGradeId(''); setStartDate(''); setStartTime(''); setEndTime('');
+    resetForm();
   };
+
+  const resetForm = () => {
+    setName('');
+    setVenueId('');
+    setGradeId('');
+    setDate(undefined);
+    setStartTime('');
+    setEndTime('');
+  };
+
+  const isValid = venueId && date && startTime && endTime;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -71,7 +89,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
             </div>
             <div className="space-y-2">
               <Label htmlFor="game-venue">Venue</Label>
-              <Select value={venueId} onValueChange={setVenueId} required>
+              <Select value={venueId} onValueChange={setVenueId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select venue" />
                 </SelectTrigger>
@@ -83,21 +101,46 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="start-date">Date</Label>
-              <Input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+              <Label>Start Time</Label>
+              <TimePicker value={startTime} onChange={setStartTime} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="start-time">Start Time</Label>
-              <Input id="start-time" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="end-time">End Time</Label>
-              <Input id="end-time" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
+              <Label>End Time</Label>
+              <TimePicker value={endTime} onChange={setEndTime} />
             </div>
           </div>
-          <Button type="submit" className="w-full" disabled={isPending}>
+
+          <Button type="submit" className="w-full" disabled={isPending || !isValid}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Schedule Game
           </Button>
