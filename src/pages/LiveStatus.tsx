@@ -1,14 +1,34 @@
-import { mockGames, mockVenues } from '@/data/mockData';
+import { useGames, useVenues } from '@/hooks/useData';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Card } from '@/components/ui/card';
-import { Zap, ArrowLeft, ShieldCheck, Car, Building2, Fence } from 'lucide-react';
+import { Zap, ArrowLeft, ShieldCheck, Car, Building2, Fence, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const LiveStatus = () => {
-  const redGames = mockGames.filter(g => g.status === 'red');
-  const allGames = mockGames;
+  const { data: games = [], isLoading: gamesLoading } = useGames();
+  const { data: venues = [], isLoading: venuesLoading } = useVenues();
+
+  const isLoading = gamesLoading || venuesLoading;
+
+  // Get active games (within time window)
+  const now = new Date();
+  const activeGames = games.filter(g => {
+    const start = new Date(g.start_time);
+    const end = new Date(g.end_time);
+    return now >= start && now <= end;
+  });
+
+  const redGames = activeGames.filter(g => g.status === 'red');
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,9 +56,9 @@ const LiveStatus = () => {
               <Zap className="h-5 w-5" /> Active Stoppages
             </h2>
             {redGames.map(game => {
-              const venue = mockVenues.find(v => v.id === game.venueId);
-              if (!venue || !game.countdownEnd) return null;
-              return <CountdownTimer key={game.id} targetTime={game.countdownEnd} venueName={venue.name} />;
+              const venue = venues.find(v => v.id === game.venue_id);
+              if (!venue || !game.countdown_end) return null;
+              return <CountdownTimer key={game.id} targetTime={game.countdown_end} venueName={venue.name} />;
             })}
           </section>
         ) : (
@@ -50,21 +70,23 @@ const LiveStatus = () => {
         )}
 
         {/* All Venue Statuses */}
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">All Venues</h2>
-          <div className="grid gap-2">
-            {allGames.map(game => {
-              const venue = mockVenues.find(v => v.id === game.venueId);
-              if (!venue) return null;
-              return (
-                <Card key={game.id} className="bg-card border-border p-4 flex items-center justify-between">
-                  <span className="font-medium text-foreground">{venue.name}</span>
-                  <StatusBadge status={game.status} />
-                </Card>
-              );
-            })}
-          </div>
-        </section>
+        {activeGames.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground">Active Venues</h2>
+            <div className="grid gap-2">
+              {activeGames.map(game => {
+                const venue = venues.find(v => v.id === game.venue_id);
+                if (!venue) return null;
+                return (
+                  <Card key={game.id} className="bg-card border-border p-4 flex items-center justify-between">
+                    <span className="font-medium text-foreground">{venue.name}</span>
+                    <StatusBadge status={game.status} />
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Safety Tips */}
         <section className="space-y-3">

@@ -14,16 +14,213 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      games: {
+        Row: {
+          countdown_end: string | null
+          created_at: string
+          end_time: string
+          id: string
+          last_strike_at: string | null
+          last_strike_distance: number | null
+          start_time: string
+          status: Database["public"]["Enums"]["lightning_status"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          countdown_end?: string | null
+          created_at?: string
+          end_time: string
+          id?: string
+          last_strike_at?: string | null
+          last_strike_distance?: number | null
+          start_time: string
+          status?: Database["public"]["Enums"]["lightning_status"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          countdown_end?: string | null
+          created_at?: string
+          end_time?: string
+          id?: string
+          last_strike_at?: string | null
+          last_strike_distance?: number | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["lightning_status"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lightning_alerts: {
+        Row: {
+          alert_type: string
+          distance_km: number | null
+          game_id: string | null
+          id: string
+          message: string
+          official_id: string | null
+          sent_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          distance_km?: number | null
+          game_id?: string | null
+          id?: string
+          message: string
+          official_id?: string | null
+          sent_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          distance_km?: number | null
+          game_id?: string | null
+          id?: string
+          message?: string
+          official_id?: string | null
+          sent_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lightning_alerts_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lightning_alerts_official_id_fkey"
+            columns: ["official_id"]
+            isOneToOne: false
+            referencedRelation: "officials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lightning_alerts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      officials: {
+        Row: {
+          alerts_enabled: boolean
+          created_at: string
+          id: string
+          mobile: string
+          name: string
+          updated_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          alerts_enabled?: boolean
+          created_at?: string
+          id?: string
+          mobile: string
+          name: string
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          alerts_enabled?: boolean
+          created_at?: string
+          id?: string
+          mobile?: string
+          name?: string
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "officials_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      venues: {
+        Row: {
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          safe_zone_radius: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          safe_zone_radius?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          safe_zone_radius?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "viewer"
+      lightning_status: "green" | "orange" | "red"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +347,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "viewer"],
+      lightning_status: ["green", "orange", "red"],
+    },
   },
 } as const

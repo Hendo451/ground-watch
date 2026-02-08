@@ -1,5 +1,6 @@
-import { LightningStatus } from '@/types/lightning';
 import { cn } from '@/lib/utils';
+
+type LightningStatus = 'green' | 'orange' | 'red';
 
 interface StatusBadgeProps {
   status: LightningStatus;

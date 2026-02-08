@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus } from 'lucide-react';
-import { Venue } from '@/types/lightning';
+import { UserPlus, Loader2 } from 'lucide-react';
+import { Venue } from '@/hooks/useData';
 
 interface AddOfficialDialogProps {
   venues: Venue[];
-  onAdd: (official: { name: string; mobile: string; venueId: string }) => void;
+  onAdd: (official: { name: string; mobile: string; venue_id: string | null }) => void;
+  isPending?: boolean;
 }
 
-export const AddOfficialDialog = ({ venues, onAdd }: AddOfficialDialogProps) => {
+export const AddOfficialDialog = ({ venues, onAdd, isPending }: AddOfficialDialogProps) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
@@ -20,7 +21,7 @@ export const AddOfficialDialog = ({ venues, onAdd }: AddOfficialDialogProps) => 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd({ name, mobile, venueId });
+    onAdd({ name, mobile, venue_id: venueId || null });
     setOpen(false);
     setName(''); setMobile(''); setVenueId('');
   };
@@ -47,9 +48,9 @@ export const AddOfficialDialog = ({ venues, onAdd }: AddOfficialDialogProps) => 
           </div>
           <div className="space-y-2">
             <Label htmlFor="off-venue">Assigned Venue</Label>
-            <Select value={venueId} onValueChange={setVenueId} required>
+            <Select value={venueId} onValueChange={setVenueId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select venue" />
+                <SelectValue placeholder="Select venue (optional)" />
               </SelectTrigger>
               <SelectContent>
                 {venues.map(v => (
@@ -58,7 +59,10 @@ export const AddOfficialDialog = ({ venues, onAdd }: AddOfficialDialogProps) => 
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" className="w-full">Add Official</Button>
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Add Official
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

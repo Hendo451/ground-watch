@@ -1,21 +1,48 @@
-import { useState } from 'react';
-import { mockVenues, mockOfficials, mockGames } from '@/data/mockData';
+import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame } from '@/hooks/useData';
+import { useAuth } from '@/hooks/useAuth';
 import { ActiveGameCard } from '@/components/ActiveGameCard';
 import { AddVenueDialog } from '@/components/AddVenueDialog';
 import { AddOfficialDialog } from '@/components/AddOfficialDialog';
+import { AddGameDialog } from '@/components/AddGameDialog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Card } from '@/components/ui/card';
-import { Zap, MapPin, Users, CalendarClock, Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Venue, Official, LightningStatus } from '@/types/lightning';
+import { Zap, MapPin, Users, CalendarClock, Shield, LogOut, Loader2 } from 'lucide-react';
+import { Link, Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
-  const [venues, setVenues] = useState<Venue[]>(mockVenues);
-  const [officials, setOfficials] = useState<Official[]>(mockOfficials);
-  const games = mockGames;
+  const { user, isAdmin, loading: authLoading, signOut } = useAuth();
+  const { data: venues = [], isLoading: venuesLoading } = useVenues();
+  const { data: officials = [], isLoading: officialsLoading } = useOfficials();
+  const { data: games = [], isLoading: gamesLoading } = useGames();
 
-  const statusCounts: Record<LightningStatus, number> = {
+  const addVenue = useAddVenue();
+  const addOfficial = useAddOfficial();
+  const addGame = useAddGame();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  const isLoading = venuesLoading || officialsLoading || gamesLoading;
+
+  // Filter to active games (current time within start/end window)
+  const now = new Date();
+  const activeGames = games.filter(g => {
+    const start = new Date(g.start_time);
+    const end = new Date(g.end_time);
+    return now >= start && now <= end;
+  });
+
+  const statusCounts = {
     red: games.filter(g => g.status === 'red').length,
     orange: games.filter(g => g.status === 'orange').length,
     green: games.filter(g => g.status === 'green').length,
@@ -41,11 +68,21 @@ const Dashboard = () => {
                 <Shield className="h-3.5 w-3.5" /> Live Status
               </Button>
             </Link>
+            <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5 text-xs">
+              <LogOut className="h-3.5 w-3.5" /> Sign Out
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
+        {/* Admin notice */}
+        {!isAdmin && (
+          <Card className="bg-warning/10 border-warning/20 p-4">
+            <p className="text-sm text-warning">You have viewer access. Contact an admin to get write permissions.</p>
+          </Card>
+        )}
+
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card className="bg-card border-border p-4 flex items-center gap-3">
@@ -63,7 +100,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{games.length}</p>
-              <p className="text-xs text-muted-foreground">Active Games</p>
+              <p className="text-xs text-muted-foreground">Scheduled Games</p>
             </div>
           </Card>
           <Card className="bg-card border-border p-4 flex items-center gap-3">
@@ -87,64 +124,87 @@ const Dashboard = () => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
-          <AddVenueDialog onAdd={(v) => setVenues(prev => [...prev, { ...v, id: String(Date.now()) }])} />
-          <AddOfficialDialog venues={venues} onAdd={(o) => setOfficials(prev => [...prev, { ...o, id: String(Date.now()), alertsEnabled: true }])} />
-        </div>
-
-        {/* Active Games */}
-        <section>
-          <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-primary" />
-            Active Games
-          </h2>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {games.map(game => {
-              const venue = venues.find(v => v.id === game.venueId);
-              const official = officials.find(o => o.venueId === game.venueId);
-              if (!venue) return null;
-              return <ActiveGameCard key={game.id} game={game} venue={venue} official={official} />;
-            })}
+        {isAdmin && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <AddVenueDialog onAdd={(v) => addVenue.mutate(v)} isPending={addVenue.isPending} />
+            <AddOfficialDialog venues={venues} onAdd={(o) => addOfficial.mutate(o)} isPending={addOfficial.isPending} />
+            <AddGameDialog venues={venues} onAdd={(g) => addGame.mutate(g)} isPending={addGame.isPending} />
           </div>
-        </section>
+        )}
 
-        {/* Venues Table */}
-        <section>
-          <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-primary" />
-            All Venues
-          </h2>
-          <Card className="border-border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                    <th className="text-left px-4 py-3 font-medium">Venue</th>
-                    <th className="text-left px-4 py-3 font-medium">Coordinates</th>
-                    <th className="text-left px-4 py-3 font-medium">Safe Zone</th>
-                    <th className="text-left px-4 py-3 font-medium">Assigned Official</th>
-                    <th className="text-left px-4 py-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {venues.map(venue => {
-                    const official = officials.find(o => o.venueId === venue.id);
-                    const game = games.find(g => g.venueId === venue.id);
-                    return (
-                      <tr key={venue.id} className="border-b border-border/50 last:border-0">
-                        <td className="px-4 py-3 font-medium text-foreground">{venue.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{venue.latitude.toFixed(4)}, {venue.longitude.toFixed(4)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{venue.safeZoneRadius} km</td>
-                        <td className="px-4 py-3 text-muted-foreground">{official?.name ?? '—'}</td>
-                        <td className="px-4 py-3">{game ? <StatusBadge status={game.status} size="sm" /> : <span className="text-xs text-muted-foreground">Inactive</span>}</td>
-                      </tr>
-                    );
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {/* Active Games */}
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-primary" />
+                Active Games ({activeGames.length})
+              </h2>
+              {activeGames.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {activeGames.map(game => {
+                    const venue = venues.find(v => v.id === game.venue_id);
+                    const official = officials.find(o => o.venue_id === game.venue_id);
+                    if (!venue) return null;
+                    return <ActiveGameCard key={game.id} game={game} venue={venue} official={official} />;
                   })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </section>
+                </div>
+              ) : (
+                <Card className="bg-card border-border p-6 text-center">
+                  <p className="text-muted-foreground">No active games right now</p>
+                </Card>
+              )}
+            </section>
+
+            {/* Venues Table */}
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                All Venues
+              </h2>
+              <Card className="border-border bg-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                        <th className="text-left px-4 py-3 font-medium">Venue</th>
+                        <th className="text-left px-4 py-3 font-medium">Coordinates</th>
+                        <th className="text-left px-4 py-3 font-medium">Safe Zone</th>
+                        <th className="text-left px-4 py-3 font-medium">Assigned Official</th>
+                        <th className="text-left px-4 py-3 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {venues.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">No venues yet</td>
+                        </tr>
+                      ) : (
+                        venues.map(venue => {
+                          const official = officials.find(o => o.venue_id === venue.id);
+                          const game = games.find(g => g.venue_id === venue.id);
+                          return (
+                            <tr key={venue.id} className="border-b border-border/50 last:border-0">
+                              <td className="px-4 py-3 font-medium text-foreground">{venue.name}</td>
+                              <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{Number(venue.latitude).toFixed(4)}, {Number(venue.longitude).toFixed(4)}</td>
+                              <td className="px-4 py-3 text-muted-foreground">{venue.safe_zone_radius} km</td>
+                              <td className="px-4 py-3 text-muted-foreground">{official?.name ?? '—'}</td>
+                              <td className="px-4 py-3">{game ? <StatusBadge status={game.status} size="sm" /> : <span className="text-xs text-muted-foreground">No game</span>}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );

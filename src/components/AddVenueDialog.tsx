@@ -3,13 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 
 interface AddVenueDialogProps {
-  onAdd: (venue: { name: string; latitude: number; longitude: number; safeZoneRadius: number }) => void;
+  onAdd: (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number }) => void;
+  isPending?: boolean;
 }
 
-export const AddVenueDialog = ({ onAdd }: AddVenueDialogProps) => {
+export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [lat, setLat] = useState('');
@@ -18,7 +19,7 @@ export const AddVenueDialog = ({ onAdd }: AddVenueDialogProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd({ name, latitude: parseFloat(lat), longitude: parseFloat(lng), safeZoneRadius: parseFloat(radius) });
+    onAdd({ name, latitude: parseFloat(lat), longitude: parseFloat(lng), safe_zone_radius: parseFloat(radius) });
     setOpen(false);
     setName(''); setLat(''); setLng(''); setRadius('16');
   };
@@ -53,7 +54,10 @@ export const AddVenueDialog = ({ onAdd }: AddVenueDialogProps) => {
             <Label htmlFor="radius">Safe Zone Radius (km)</Label>
             <Input id="radius" type="number" value={radius} onChange={e => setRadius(e.target.value)} required />
           </div>
-          <Button type="submit" className="w-full">Add Venue</Button>
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Add Venue
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

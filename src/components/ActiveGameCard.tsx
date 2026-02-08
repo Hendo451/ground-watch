@@ -1,4 +1,4 @@
-import { Game, Venue, Official } from '@/types/lightning';
+import { Game, Venue, Official } from '@/hooks/useData';
 import { StatusBadge } from './StatusBadge';
 import { Card } from '@/components/ui/card';
 import { MapPin, Clock, Zap, User } from 'lucide-react';
@@ -20,7 +20,7 @@ export const ActiveGameCard = ({ game, venue, official }: ActiveGameCardProps) =
           <h3 className="font-semibold text-card-foreground">{venue.name}</h3>
           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
             <MapPin className="h-3 w-3" />
-            {venue.latitude.toFixed(4)}, {venue.longitude.toFixed(4)}
+            {Number(venue.latitude).toFixed(4)}, {Number(venue.longitude).toFixed(4)}
           </p>
         </div>
         <StatusBadge status={game.status} />
@@ -29,12 +29,12 @@ export const ActiveGameCard = ({ game, venue, official }: ActiveGameCardProps) =
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
-          <span>{formatTime(game.startTime)} – {formatTime(game.endTime)}</span>
+          <span>{formatTime(game.start_time)} – {formatTime(game.end_time)}</span>
         </div>
-        {game.lastStrikeDistance !== null && (
+        {game.last_strike_distance !== null && (
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Zap className="h-3.5 w-3.5 text-warning" />
-            <span>{game.lastStrikeDistance} km</span>
+            <span>{game.last_strike_distance} km</span>
           </div>
         )}
       </div>
@@ -46,7 +46,7 @@ export const ActiveGameCard = ({ game, venue, official }: ActiveGameCardProps) =
         </div>
       )}
 
-      {game.status === 'red' && game.countdownEnd && (
+      {game.status === 'red' && game.countdown_end && (
         <div className="rounded-md bg-danger/10 border border-danger/20 px-3 py-2 text-xs text-danger font-medium">
           🔒 Game stopped — 30-min restart countdown active
         </div>
