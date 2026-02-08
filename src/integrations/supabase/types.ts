@@ -20,9 +20,13 @@ export type Database = {
           created_at: string
           end_time: string
           grade_id: string | null
+          heat_status: Database["public"]["Enums"]["heat_status"]
           id: string
+          last_heat_check_at: string | null
+          last_humidity: number | null
           last_strike_at: string | null
           last_strike_distance: number | null
+          last_temp_c: number | null
           name: string | null
           start_time: string
           status: Database["public"]["Enums"]["lightning_status"]
@@ -35,9 +39,13 @@ export type Database = {
           created_at?: string
           end_time: string
           grade_id?: string | null
+          heat_status?: Database["public"]["Enums"]["heat_status"]
           id?: string
+          last_heat_check_at?: string | null
+          last_humidity?: number | null
           last_strike_at?: string | null
           last_strike_distance?: number | null
+          last_temp_c?: number | null
           name?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["lightning_status"]
@@ -50,9 +58,13 @@ export type Database = {
           created_at?: string
           end_time?: string
           grade_id?: string | null
+          heat_status?: Database["public"]["Enums"]["heat_status"]
           id?: string
+          last_heat_check_at?: string | null
+          last_humidity?: number | null
           last_strike_at?: string | null
           last_strike_distance?: number | null
+          last_temp_c?: number | null
           name?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["lightning_status"]
@@ -100,6 +112,67 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      heat_alerts: {
+        Row: {
+          alert_type: string
+          game_id: string | null
+          heat_status: Database["public"]["Enums"]["heat_status"]
+          humidity: number
+          id: string
+          message: string
+          official_id: string | null
+          sent_at: string
+          temp_c: number
+          venue_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          game_id?: string | null
+          heat_status: Database["public"]["Enums"]["heat_status"]
+          humidity: number
+          id?: string
+          message: string
+          official_id?: string | null
+          sent_at?: string
+          temp_c: number
+          venue_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          game_id?: string | null
+          heat_status?: Database["public"]["Enums"]["heat_status"]
+          humidity?: number
+          id?: string
+          message?: string
+          official_id?: string | null
+          sent_at?: string
+          temp_c?: number
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "heat_alerts_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "heat_alerts_official_id_fkey"
+            columns: ["official_id"]
+            isOneToOne: false
+            referencedRelation: "officials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "heat_alerts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lightning_alerts: {
         Row: {
@@ -331,6 +404,7 @@ export type Database = {
           longitude: number
           name: string
           safe_zone_radius: number
+          sport_intensity: Database["public"]["Enums"]["sport_intensity"]
           updated_at: string
         }
         Insert: {
@@ -340,6 +414,7 @@ export type Database = {
           longitude: number
           name: string
           safe_zone_radius?: number
+          sport_intensity?: Database["public"]["Enums"]["sport_intensity"]
           updated_at?: string
         }
         Update: {
@@ -349,6 +424,7 @@ export type Database = {
           longitude?: number
           name?: string
           safe_zone_radius?: number
+          sport_intensity?: Database["public"]["Enums"]["sport_intensity"]
           updated_at?: string
         }
         Relationships: []
@@ -368,7 +444,9 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "viewer"
+      heat_status: "low" | "moderate" | "high" | "extreme"
       lightning_status: "green" | "orange" | "red"
+      sport_intensity: "category_1" | "category_2" | "category_3"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -497,7 +575,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "viewer"],
+      heat_status: ["low", "moderate", "high", "extreme"],
       lightning_status: ["green", "orange", "red"],
+      sport_intensity: ["category_1", "category_2", "category_3"],
     },
   },
 } as const

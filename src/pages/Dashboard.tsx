@@ -16,7 +16,7 @@ import { TrainingManager } from '@/components/TrainingManager';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List } from 'lucide-react';
+import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -95,6 +95,11 @@ const Dashboard = () => {
     green: games.filter(g => g.status === 'green').length,
   };
 
+  const heatCounts = {
+    extreme: activeGames.filter(g => g.heat_status === 'extreme').length,
+    high: activeGames.filter(g => g.heat_status === 'high').length,
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -138,7 +143,33 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-bold text-danger">{statusCounts.red}</p>
-              <p className="text-xs text-danger/80">Active Stoppages</p>
+              <p className="text-xs text-danger/80">Lightning Stoppages</p>
+            </div>
+          </Card>
+        )}
+
+        {/* Heat Stoppages Alert */}
+        {heatCounts.extreme > 0 && (
+          <Card className="bg-danger/10 border-danger/20 p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-danger/20 flex items-center justify-center">
+              <Flame className="h-5 w-5 text-danger" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-danger">{heatCounts.extreme}</p>
+              <p className="text-xs text-danger/80">Heat Stoppages (Extreme)</p>
+            </div>
+          </Card>
+        )}
+
+        {/* High Heat Warning */}
+        {heatCounts.high > 0 && heatCounts.extreme === 0 && (
+          <Card className="bg-orange-500/10 border-orange-500/20 p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <Thermometer className="h-5 w-5 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-orange-500">{heatCounts.high}</p>
+              <p className="text-xs text-orange-500/80">High Heat Risk Games</p>
             </div>
           </Card>
         )}
