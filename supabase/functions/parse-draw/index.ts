@@ -18,6 +18,18 @@ interface ParseRequest {
   content: string; // URL, base64 image, or raw text
 }
 
+// Helper to convert ArrayBuffer to base64 without stack overflow
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 async function getScreenshotOfUrl(url: string): Promise<string> {
   // Use a free screenshot API - screenshotone.com has a generous free tier
   // Alternatively we could use thum.io or other services
@@ -35,12 +47,12 @@ async function getScreenshotOfUrl(url: string): Promise<string> {
       throw new Error('Failed to capture screenshot of the page');
     }
     const buffer = await thumbResponse.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const base64 = arrayBufferToBase64(buffer);
     return `data:image/png;base64,${base64}`;
   }
   
   const buffer = await response.arrayBuffer();
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  const base64 = arrayBufferToBase64(buffer);
   return `data:image/jpeg;base64,${base64}`;
 }
 
