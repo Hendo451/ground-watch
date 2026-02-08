@@ -249,59 +249,77 @@ const Dashboard = () => {
                             <td colSpan={isAdmin ? 7 : 6} className="px-4 py-6 text-center text-muted-foreground">No games scheduled</td>
                           </tr>
                         ) : (
-                          [...activeGames, ...upcomingGames.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()), ...pastGames.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())].map(game => {
-                            const venue = venues.find(v => v.id === game.venue_id);
-                            const grade = game.grade_id ? grades.find(g => g.id === game.grade_id) : null;
-                            const startDate = new Date(game.start_time);
-                            const endDate = new Date(game.end_time);
-                            const isActive = activeGames.some(g => g.id === game.id);
-                            const isPast = pastGames.some(g => g.id === game.id);
-                            return (
-                              <tr key={game.id} className={`border-b border-border/50 last:border-0 ${isPast ? 'opacity-50' : ''}`}>
-                                <td className="px-4 py-3 font-medium text-foreground">
-                                  {game.name || <span className="text-muted-foreground italic">Unnamed</span>}
-                                </td>
-                                <td className="px-4 py-3 text-muted-foreground">{grade?.name ?? '—'}</td>
-                                <td className="px-4 py-3 text-muted-foreground">{venue?.name ?? '—'}</td>
-                                <td className="px-4 py-3 text-muted-foreground">
-                                  {startDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                                </td>
-                                <td className="px-4 py-3 text-muted-foreground">
-                                  {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </td>
-                                <td className="px-4 py-3">
-                                  {isActive ? (
-                                    <StatusBadge status={game.status} size="sm" />
-                                  ) : isPast ? (
-                                    <span className="text-xs text-muted-foreground">Completed</span>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">Upcoming</span>
+                          (() => {
+                            const sortedGames = [...activeGames, ...upcomingGames.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()), ...pastGames.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())];
+                            let lastMonth = '';
+                            
+                            return sortedGames.map(game => {
+                              const venue = venues.find(v => v.id === game.venue_id);
+                              const grade = game.grade_id ? grades.find(g => g.id === game.grade_id) : null;
+                              const startDate = new Date(game.start_time);
+                              const endDate = new Date(game.end_time);
+                              const isActive = activeGames.some(g => g.id === game.id);
+                              const isPast = pastGames.some(g => g.id === game.id);
+                              const monthYear = startDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
+                              const showMonthHeader = monthYear !== lastMonth;
+                              lastMonth = monthYear;
+                              
+                              return (
+                                <>
+                                  {showMonthHeader && (
+                                    <tr key={`month-${monthYear}`} className="bg-muted/50">
+                                      <td colSpan={isAdmin ? 7 : 6} className="px-4 py-2 text-sm font-semibold text-foreground">
+                                        {monthYear}
+                                      </td>
+                                    </tr>
                                   )}
-                                </td>
-                                {isAdmin && (
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-1">
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingGame(game)}>
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-7 w-7 text-destructive hover:text-destructive" 
-                                        onClick={() => {
-                                          if (confirm('Delete this game?')) {
-                                            deleteGame.mutate(game.id);
-                                          }
-                                        }}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                  </td>
-                                )}
-                              </tr>
-                            );
-                          })
+                                  <tr key={game.id} className={`border-b border-border/50 last:border-0 ${isPast ? 'opacity-50' : ''}`}>
+                                    <td className="px-4 py-3 font-medium text-foreground">
+                                      {game.name || <span className="text-muted-foreground italic">Unnamed</span>}
+                                    </td>
+                                    <td className="px-4 py-3 text-muted-foreground">{grade?.name ?? '—'}</td>
+                                    <td className="px-4 py-3 text-muted-foreground">{venue?.name ?? '—'}</td>
+                                    <td className="px-4 py-3 text-muted-foreground">
+                                      {startDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    </td>
+                                    <td className="px-4 py-3 text-muted-foreground">
+                                      {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      {isActive ? (
+                                        <StatusBadge status={game.status} size="sm" />
+                                      ) : isPast ? (
+                                        <span className="text-xs text-muted-foreground">Completed</span>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">Upcoming</span>
+                                      )}
+                                    </td>
+                                    {isAdmin && (
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center gap-1">
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingGame(game)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-7 w-7 text-destructive hover:text-destructive" 
+                                            onClick={() => {
+                                              if (confirm('Delete this game?')) {
+                                                deleteGame.mutate(game.id);
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    )}
+                                  </tr>
+                                </>
+                              );
+                            });
+                          })()
                         )}
                       </tbody>
                     </table>
