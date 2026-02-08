@@ -20,6 +20,7 @@ interface AddTrainingDialogProps {
     start_time: string;
     end_time: string;
     start_date: string;
+    end_date?: string;
   }) => void;
   isPending?: boolean;
 }
@@ -33,6 +34,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +46,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
       start_time: startTime,
       end_time: endTime,
       start_date: startDate,
+      end_date: endDate || undefined,
     });
     setOpen(false);
     resetForm();
@@ -57,6 +60,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
     setStartTime('');
     setEndTime('');
     setStartDate('');
+    setEndDate('');
   };
 
   return (
@@ -150,15 +154,26 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="training-start-date">Starts From</Label>
-            <Input 
-              id="training-start-date" 
-              type="date" 
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)} 
-              required 
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="training-start-date">Starts From</Label>
+              <Input 
+                id="training-start-date" 
+                type="date" 
+                value={startDate} 
+                onChange={e => setStartDate(e.target.value)} 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="training-end-date">Ends</Label>
+              <Input 
+                id="training-end-date" 
+                type="date" 
+                value={endDate} 
+                onChange={e => setEndDate(e.target.value)} 
+              />
+            </div>
           </div>
 
           <Button type="submit" className="w-full" disabled={isPending}>
