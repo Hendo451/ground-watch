@@ -90,7 +90,8 @@ export const ImportDrawDialog = ({ onGamesExtracted }: ImportDrawDialogProps) =>
         setIsLoading(false);
       };
       
-      if (file.type.startsWith('image/')) {
+      // PDFs and images should be sent as base64 for vision processing
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         reader.readAsDataURL(file);
       } else {
         reader.readAsText(file);
