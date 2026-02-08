@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, useBulkAddGames, Game } from '@/hooks/useData';
+import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, useBulkAddGames, useGrades, useTrainings, useTrainingExceptions, useAddTraining, useAddTrainingException, Game } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { ActiveGameCard } from '@/components/ActiveGameCard';
 import { AddVenueDialog } from '@/components/AddVenueDialog';
@@ -9,9 +9,14 @@ import { EditGameDialog } from '@/components/EditGameDialog';
 import { ImportDrawDialog, ExtractedGame } from '@/components/ImportDrawDialog';
 import { ReviewImportDialog } from '@/components/ReviewImportDialog';
 import { StatusBadge } from '@/components/StatusBadge';
+import { GradeManager } from '@/components/GradeManager';
+import { AddTrainingDialog } from '@/components/AddTrainingDialog';
+import { CalendarView } from '@/components/CalendarView';
+import { TrainingManager } from '@/components/TrainingManager';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -19,6 +24,9 @@ const Dashboard = () => {
   const { data: venues = [], isLoading: venuesLoading } = useVenues();
   const { data: officials = [], isLoading: officialsLoading } = useOfficials();
   const { data: games = [], isLoading: gamesLoading } = useGames();
+  const { data: grades = [], isLoading: gradesLoading } = useGrades();
+  const { data: trainings = [], isLoading: trainingsLoading } = useTrainings();
+  const { data: trainingExceptions = [], isLoading: exceptionsLoading } = useTrainingExceptions();
 
   const addVenue = useAddVenue();
   const addOfficial = useAddOfficial();
@@ -26,10 +34,13 @@ const Dashboard = () => {
   const updateGame = useUpdateGame();
   const deleteGame = useDeleteGame();
   const bulkAddGames = useBulkAddGames();
+  const addTraining = useAddTraining();
+  const addTrainingException = useAddTrainingException();
 
   const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [extractedGames, setExtractedGames] = useState<ExtractedGame[]>([]);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const handleGamesExtracted = (games: ExtractedGame[]) => {
     setExtractedGames(games);
@@ -57,7 +68,16 @@ const Dashboard = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  const isLoading = venuesLoading || officialsLoading || gamesLoading;
+  const isLoading = venuesLoading || officialsLoading || gamesLoading || gradesLoading || trainingsLoading || exceptionsLoading;
+
+  const handleCancelTraining = (trainingId: string, date: string, reason: string) => {
+    addTrainingException.mutate({
+      training_id: trainingId,
+      exception_date: date,
+      is_cancelled: true,
+      reason: reason || undefined,
+    });
+  };
 
   // Categorize games
   const now = new Date();
@@ -128,7 +148,8 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <AddVenueDialog onAdd={(v) => addVenue.mutate(v)} isPending={addVenue.isPending} />
             <AddOfficialDialog venues={venues} onAdd={(o) => addOfficial.mutate(o)} isPending={addOfficial.isPending} />
-            <AddGameDialog venues={venues} onAdd={(g) => addGame.mutate(g)} isPending={addGame.isPending} />
+            <AddGameDialog venues={venues} grades={grades} onAdd={(g) => addGame.mutate(g)} isPending={addGame.isPending} />
+            <AddTrainingDialog venues={venues} grades={grades} onAdd={(t) => addTraining.mutate(t)} isPending={addTraining.isPending} />
             <ImportDrawDialog onGamesExtracted={handleGamesExtracted} />
           </div>
         )}
@@ -170,88 +191,136 @@ const Dashboard = () => {
               )}
             </section>
 
-            {/* Scheduled Games */}
+            {/* Scheduled Games with View Toggle */}
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                Scheduled Games ({games.length})
-              </h2>
-              <Card className="border-border bg-card overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                        <th className="text-left px-4 py-3 font-medium">Game</th>
-                        <th className="text-left px-4 py-3 font-medium">Venue</th>
-                        <th className="text-left px-4 py-3 font-medium">Date</th>
-                        <th className="text-left px-4 py-3 font-medium">Time</th>
-                        <th className="text-left px-4 py-3 font-medium">Status</th>
-                        {isAdmin && <th className="text-left px-4 py-3 font-medium">Actions</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {games.length === 0 ? (
-                        <tr>
-                          <td colSpan={isAdmin ? 6 : 5} className="px-4 py-6 text-center text-muted-foreground">No games scheduled</td>
-                        </tr>
-                      ) : (
-                        [...upcomingGames, ...activeGames, ...pastGames].map(game => {
-                          const venue = venues.find(v => v.id === game.venue_id);
-                          const startDate = new Date(game.start_time);
-                          const endDate = new Date(game.end_time);
-                          const isActive = activeGames.some(g => g.id === game.id);
-                          const isPast = pastGames.some(g => g.id === game.id);
-                          return (
-                            <tr key={game.id} className={`border-b border-border/50 last:border-0 ${isPast ? 'opacity-50' : ''}`}>
-                              <td className="px-4 py-3 font-medium text-foreground">
-                                {game.name || <span className="text-muted-foreground italic">Unnamed</span>}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground">{venue?.name ?? '—'}</td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {startDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                              </td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </td>
-                              <td className="px-4 py-3">
-                                {isActive ? (
-                                  <StatusBadge status={game.status} size="sm" />
-                                ) : isPast ? (
-                                  <span className="text-xs text-muted-foreground">Completed</span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">Upcoming</span>
-                                )}
-                              </td>
-                              {isAdmin && (
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingGame(game)}>
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-7 w-7 text-destructive hover:text-destructive" 
-                                      onClick={() => {
-                                        if (confirm('Delete this game?')) {
-                                          deleteGame.mutate(game.id);
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              )}
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Schedule
+                </h2>
+                <div className="flex items-center gap-1 bg-muted rounded-md p-1">
+                  <Button 
+                    variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    className="h-7 px-2"
+                    onClick={() => setViewMode('list')}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant={viewMode === 'calendar' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    className="h-7 px-2"
+                    onClick={() => setViewMode('calendar')}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
                 </div>
-              </Card>
+              </div>
+
+              {viewMode === 'calendar' ? (
+                <CalendarView 
+                  games={games}
+                  trainings={trainings}
+                  trainingExceptions={trainingExceptions}
+                  venues={venues}
+                  grades={grades}
+                  isAdmin={isAdmin}
+                  onCancelTraining={handleCancelTraining}
+                />
+              ) : (
+                <Card className="border-border bg-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                          <th className="text-left px-4 py-3 font-medium">Game</th>
+                          <th className="text-left px-4 py-3 font-medium">Grade</th>
+                          <th className="text-left px-4 py-3 font-medium">Venue</th>
+                          <th className="text-left px-4 py-3 font-medium">Date</th>
+                          <th className="text-left px-4 py-3 font-medium">Time</th>
+                          <th className="text-left px-4 py-3 font-medium">Status</th>
+                          {isAdmin && <th className="text-left px-4 py-3 font-medium">Actions</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {games.length === 0 ? (
+                          <tr>
+                            <td colSpan={isAdmin ? 7 : 6} className="px-4 py-6 text-center text-muted-foreground">No games scheduled</td>
+                          </tr>
+                        ) : (
+                          [...upcomingGames, ...activeGames, ...pastGames].map(game => {
+                            const venue = venues.find(v => v.id === game.venue_id);
+                            const grade = game.grade_id ? grades.find(g => g.id === game.grade_id) : null;
+                            const startDate = new Date(game.start_time);
+                            const endDate = new Date(game.end_time);
+                            const isActive = activeGames.some(g => g.id === game.id);
+                            const isPast = pastGames.some(g => g.id === game.id);
+                            return (
+                              <tr key={game.id} className={`border-b border-border/50 last:border-0 ${isPast ? 'opacity-50' : ''}`}>
+                                <td className="px-4 py-3 font-medium text-foreground">
+                                  {game.name || <span className="text-muted-foreground italic">Unnamed</span>}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">{grade?.name ?? '—'}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{venue?.name ?? '—'}</td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {startDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {isActive ? (
+                                    <StatusBadge status={game.status} size="sm" />
+                                  ) : isPast ? (
+                                    <span className="text-xs text-muted-foreground">Completed</span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">Upcoming</span>
+                                  )}
+                                </td>
+                                {isAdmin && (
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-1">
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingGame(game)}>
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-7 w-7 text-destructive hover:text-destructive" 
+                                        onClick={() => {
+                                          if (confirm('Delete this game?')) {
+                                            deleteGame.mutate(game.id);
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
             </section>
+
+            {/* Grades and Trainings */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <GradeManager isAdmin={isAdmin} />
+              <TrainingManager 
+                trainings={trainings} 
+                exceptions={trainingExceptions} 
+                venues={venues} 
+                grades={grades} 
+                isAdmin={isAdmin} 
+              />
+            </div>
 
             {/* Venues Table */}
             <section>

@@ -19,6 +19,7 @@ export type Database = {
           countdown_end: string | null
           created_at: string
           end_time: string
+          grade_id: string | null
           id: string
           last_strike_at: string | null
           last_strike_distance: number | null
@@ -32,6 +33,7 @@ export type Database = {
           countdown_end?: string | null
           created_at?: string
           end_time: string
+          grade_id?: string | null
           id?: string
           last_strike_at?: string | null
           last_strike_distance?: number | null
@@ -45,6 +47,7 @@ export type Database = {
           countdown_end?: string | null
           created_at?: string
           end_time?: string
+          grade_id?: string | null
           id?: string
           last_strike_at?: string | null
           last_strike_distance?: number | null
@@ -56,6 +59,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "games_grade_id_fkey"
+            columns: ["grade_id"]
+            isOneToOne: false
+            referencedRelation: "grades"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "games_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
@@ -63,6 +73,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      grades: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       lightning_alerts: {
         Row: {
@@ -150,6 +184,114 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "officials_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_exceptions: {
+        Row: {
+          created_at: string
+          exception_date: string
+          id: string
+          is_cancelled: boolean
+          override_end_time: string | null
+          override_start_time: string | null
+          override_venue_id: string | null
+          reason: string | null
+          training_id: string
+        }
+        Insert: {
+          created_at?: string
+          exception_date: string
+          id?: string
+          is_cancelled?: boolean
+          override_end_time?: string | null
+          override_start_time?: string | null
+          override_venue_id?: string | null
+          reason?: string | null
+          training_id: string
+        }
+        Update: {
+          created_at?: string
+          exception_date?: string
+          id?: string
+          is_cancelled?: boolean
+          override_end_time?: string | null
+          override_start_time?: string | null
+          override_venue_id?: string | null
+          reason?: string | null
+          training_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_exceptions_override_venue_id_fkey"
+            columns: ["override_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_exceptions_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "trainings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainings: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_date: string | null
+          end_time: string
+          grade_id: string | null
+          id: string
+          name: string
+          start_date: string
+          start_time: string
+          updated_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_date?: string | null
+          end_time: string
+          grade_id?: string | null
+          id?: string
+          name: string
+          start_date: string
+          start_time: string
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_date?: string | null
+          end_time?: string
+          grade_id?: string | null
+          id?: string
+          name?: string
+          start_date?: string
+          start_time?: string
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainings_grade_id_fkey"
+            columns: ["grade_id"]
+            isOneToOne: false
+            referencedRelation: "grades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainings_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
