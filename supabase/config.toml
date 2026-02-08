@@ -1,1 +1,7 @@
 project_id = "fhpfzizqhpwejhxifszr"
+
+[functions.lightning-monitor]
+verify_jwt = false
+
+[functions.send-sms-alert]
+verify_jwt = false
