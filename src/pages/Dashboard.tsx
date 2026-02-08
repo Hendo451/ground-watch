@@ -88,45 +88,18 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card className="bg-card border-border p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{venues.length}</p>
-              <p className="text-xs text-muted-foreground">Venues</p>
-            </div>
-          </Card>
-          <Card className="bg-card border-border p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <CalendarClock className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{games.length}</p>
-              <p className="text-xs text-muted-foreground">Scheduled Games</p>
-            </div>
-          </Card>
-          <Card className="bg-card border-border p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-danger/10 flex items-center justify-center">
+        {/* Stoppages Alert */}
+        {statusCounts.red > 0 && (
+          <Card className="bg-danger/10 border-danger/20 p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-danger/20 flex items-center justify-center">
               <Zap className="h-5 w-5 text-danger" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{statusCounts.red}</p>
-              <p className="text-xs text-muted-foreground">Stoppages</p>
+              <p className="text-2xl font-bold text-danger">{statusCounts.red}</p>
+              <p className="text-xs text-danger/80">Active Stoppages</p>
             </div>
           </Card>
-          <Card className="bg-card border-border p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-safe/10 flex items-center justify-center">
-              <Users className="h-5 w-5 text-safe" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{officials.length}</p>
-              <p className="text-xs text-muted-foreground">Officials</p>
-            </div>
-          </Card>
-        </div>
+        )}
 
         {/* Actions */}
         {isAdmin && (
