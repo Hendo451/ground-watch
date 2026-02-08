@@ -158,3 +158,22 @@ export const useDeleteGame = () => {
     },
   });
 };
+
+export const useBulkAddGames = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (games: { name?: string; venue_id: string; start_time: string; end_time: string }[]) => {
+      const gamesWithStatus = games.map(g => ({ ...g, status: 'green' as const }));
+      const { data, error } = await supabase.from('games').insert(gamesWithStatus).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      toast.success(`${data.length} games imported successfully`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};

@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, Game } from '@/hooks/useData';
+import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, useBulkAddGames, Game } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { ActiveGameCard } from '@/components/ActiveGameCard';
 import { AddVenueDialog } from '@/components/AddVenueDialog';
 import { AddOfficialDialog } from '@/components/AddOfficialDialog';
 import { AddGameDialog } from '@/components/AddGameDialog';
 import { EditGameDialog } from '@/components/EditGameDialog';
+import { ImportDrawDialog, ExtractedGame } from '@/components/ImportDrawDialog';
+import { ReviewImportDialog } from '@/components/ReviewImportDialog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,8 +25,25 @@ const Dashboard = () => {
   const addGame = useAddGame();
   const updateGame = useUpdateGame();
   const deleteGame = useDeleteGame();
+  const bulkAddGames = useBulkAddGames();
 
   const [editingGame, setEditingGame] = useState<Game | null>(null);
+  const [extractedGames, setExtractedGames] = useState<ExtractedGame[]>([]);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+
+  const handleGamesExtracted = (games: ExtractedGame[]) => {
+    setExtractedGames(games);
+    setShowReviewDialog(true);
+  };
+
+  const handleConfirmImport = (games: { name: string; venue_id: string; start_time: string; end_time: string }[]) => {
+    bulkAddGames.mutate(games, {
+      onSuccess: () => {
+        setShowReviewDialog(false);
+        setExtractedGames([]);
+      }
+    });
+  };
 
   if (authLoading) {
     return (
@@ -110,6 +129,7 @@ const Dashboard = () => {
             <AddVenueDialog onAdd={(v) => addVenue.mutate(v)} isPending={addVenue.isPending} />
             <AddOfficialDialog venues={venues} onAdd={(o) => addOfficial.mutate(o)} isPending={addOfficial.isPending} />
             <AddGameDialog venues={venues} onAdd={(g) => addGame.mutate(g)} isPending={addGame.isPending} />
+            <ImportDrawDialog onGamesExtracted={handleGamesExtracted} />
           </div>
         )}
 
@@ -287,6 +307,16 @@ const Dashboard = () => {
             });
           }}
           isPending={updateGame.isPending}
+        />
+
+        <ReviewImportDialog
+          open={showReviewDialog}
+          onOpenChange={setShowReviewDialog}
+          extractedGames={extractedGames}
+          venues={venues}
+          officials={officials}
+          onConfirm={handleConfirmImport}
+          isPending={bulkAddGames.isPending}
         />
       </main>
     </div>
