@@ -18,7 +18,7 @@ export const TrainingManager = ({ trainings, exceptions, venues, grades, isAdmin
   const deleteTraining = useDeleteTraining();
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Delete recurring training "${name}"? This cannot be undone.`)) {
+    if (confirm(`Delete training "${name}"? This cannot be undone.`)) {
       deleteTraining.mutate(id);
     }
   };
@@ -31,12 +31,12 @@ export const TrainingManager = ({ trainings, exceptions, venues, grades, isAdmin
     <Card className="border-border bg-card overflow-hidden">
       <div className="p-4 border-b border-border flex items-center gap-2">
         <Dumbbell className="h-5 w-5 text-primary" />
-        <h3 className="font-semibold text-foreground">Recurring Trainings</h3>
+        <h3 className="font-semibold text-foreground">Trainings</h3>
       </div>
 
       {trainings.length === 0 ? (
         <div className="p-6 text-center text-muted-foreground">
-          No recurring trainings set up yet.
+          No trainings set up yet.
         </div>
       ) : (
         <div className="divide-y divide-border/50">

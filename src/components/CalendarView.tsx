@@ -329,7 +329,7 @@ export const CalendarView = ({
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This will cancel just this session, not the entire recurring schedule.
+              This will cancel just this session, not the entire training schedule.
             </p>
             <div className="space-y-2">
               <label className="text-sm font-medium">Reason (optional)</label>
