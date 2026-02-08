@@ -80,7 +80,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Schedule Recurring Training</DialogTitle>
+          <DialogTitle>Schedule Training</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
