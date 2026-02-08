@@ -267,9 +267,12 @@ const Dashboard = () => {
                               return (
                                 <>
                                   {showMonthHeader && (
-                                    <tr key={`month-${monthYear}`} className="bg-muted/50">
-                                      <td colSpan={isAdmin ? 7 : 6} className="px-4 py-2 text-sm font-semibold text-foreground">
-                                        {monthYear}
+                                    <tr key={`month-${monthYear}`}>
+                                      <td colSpan={isAdmin ? 7 : 6} className="pt-6 pb-2 px-4">
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-xs font-semibold uppercase tracking-wider text-primary">{monthYear}</span>
+                                          <div className="flex-1 h-px bg-border" />
+                                        </div>
                                       </td>
                                     </tr>
                                   )}
