@@ -48,8 +48,19 @@ export const LocationSearch = ({ onSelect, placeholder = "Search for a venue..."
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
+        // Bias search toward Australia with viewbox (AU bounding box) and prefer sports venues
+        const params = new URLSearchParams({
+          format: 'json',
+          q: query,
+          limit: '8', // Fetch more to filter
+          addressdetails: '1',
+          countrycodes: 'au', // Prioritize Australia
+          viewbox: '112.9,-43.7,153.6,-10.7', // Australia bounding box
+          bounded: '0', // Don't strictly limit, just prefer
+        });
+        
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
+          `https://nominatim.openstreetmap.org/search?${params.toString()}`,
           {
             headers: {
               'Accept': 'application/json',
@@ -58,7 +69,26 @@ export const LocationSearch = ({ onSelect, placeholder = "Search for a venue..."
           }
         );
         const data: NominatimResult[] = await response.json();
-        setResults(data);
+        
+        // Sort to prioritize sports venues (stadiums, ovals, sports centres, parks)
+        const sortedData = data.sort((a, b) => {
+          const sportsKeywords = ['stadium', 'oval', 'park', 'field', 'ground', 'sports', 'arena', 'reserve', 'recreation'];
+          const aIsSports = sportsKeywords.some(k => 
+            a.display_name.toLowerCase().includes(k) || 
+            a.address?.leisure?.toLowerCase().includes(k) ||
+            a.address?.amenity?.toLowerCase().includes(k)
+          );
+          const bIsSports = sportsKeywords.some(k => 
+            b.display_name.toLowerCase().includes(k) ||
+            b.address?.leisure?.toLowerCase().includes(k) ||
+            b.address?.amenity?.toLowerCase().includes(k)
+          );
+          if (aIsSports && !bIsSports) return -1;
+          if (!aIsSports && bIsSports) return 1;
+          return 0;
+        });
+        
+        setResults(sortedData.slice(0, 5)); // Return top 5 after sorting
         setOpen(data.length > 0);
       } catch (error) {
         console.error('Location search failed:', error);
