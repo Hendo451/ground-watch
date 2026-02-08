@@ -78,10 +78,10 @@ export const PhoneInput = ({ value, onChange, placeholder = "400 111 222", requi
             <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-0" align="start">
+        <PopoverContent className="w-[280px] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
           <Command>
             <CommandInput placeholder="Search country..." />
-            <CommandList>
+            <CommandList className="max-h-[200px] overflow-y-auto">
               <CommandEmpty>No country found.</CommandEmpty>
               <CommandGroup>
                 {COUNTRIES.map((country) => (
