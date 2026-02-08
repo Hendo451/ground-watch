@@ -40,8 +40,8 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
     e.preventDefault();
     onAdd({
       name,
-      venue_id: venueId || undefined,
-      grade_id: gradeId || undefined,
+      venue_id: venueId && venueId !== '__none__' ? venueId : undefined,
+      grade_id: gradeId && gradeId !== '__none__' ? gradeId : undefined,
       day_of_week: parseInt(dayOfWeek),
       start_time: startTime,
       end_time: endTime,
@@ -89,12 +89,12 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="training-grade">Grade (optional)</Label>
-              <Select value={gradeId} onValueChange={setGradeId}>
+              <Select value={gradeId || '__none__'} onValueChange={setGradeId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select grade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No grade</SelectItem>
+                  <SelectItem value="__none__">No grade</SelectItem>
                   {grades.map(g => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
@@ -103,12 +103,12 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
             </div>
             <div className="space-y-2">
               <Label htmlFor="training-venue">Venue (optional)</Label>
-              <Select value={venueId} onValueChange={setVenueId}>
+              <Select value={venueId || '__none__'} onValueChange={setVenueId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select venue" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No venue</SelectItem>
+                  <SelectItem value="__none__">No venue</SelectItem>
                   {venues.map(v => (
                     <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
                   ))}
