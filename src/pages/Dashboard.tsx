@@ -159,7 +159,6 @@ const Dashboard = () => {
                     <thead>
                       <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
                         <th className="text-left px-4 py-3 font-medium">Venue</th>
-                        <th className="text-left px-4 py-3 font-medium">Coordinates</th>
                         <th className="text-left px-4 py-3 font-medium">Safe Zone</th>
                         <th className="text-left px-4 py-3 font-medium">Assigned Official</th>
                         <th className="text-left px-4 py-3 font-medium">Status</th>
@@ -168,7 +167,7 @@ const Dashboard = () => {
                     <tbody>
                       {venues.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">No venues yet</td>
+                          <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">No venues yet</td>
                         </tr>
                       ) : (
                         venues.map(venue => {
@@ -177,7 +176,6 @@ const Dashboard = () => {
                           return (
                             <tr key={venue.id} className="border-b border-border/50 last:border-0">
                               <td className="px-4 py-3 font-medium text-foreground">{venue.name}</td>
-                              <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{Number(venue.latitude).toFixed(4)}, {Number(venue.longitude).toFixed(4)}</td>
                               <td className="px-4 py-3 text-muted-foreground">{venue.safe_zone_radius} km</td>
                               <td className="px-4 py-3 text-muted-foreground">{official?.name ?? '—'}</td>
                               <td className="px-4 py-3">{game ? <StatusBadge status={game.status} size="sm" /> : <span className="text-xs text-muted-foreground">No game</span>}</td>
