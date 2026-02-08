@@ -33,14 +33,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 async function getScreenshotOfUrl(url: string): Promise<string> {
   // Use a free screenshot API - screenshotone.com has a generous free tier
   // Alternatively we could use thum.io or other services
-  const screenshotUrl = `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&viewport_width=1280&viewport_height=2000&format=jpg&delay=3&block_ads=true&block_cookie_banners=true&access_key=free`;
+  // Increased viewport height to capture more games on the page
+  const screenshotUrl = `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&viewport_width=1280&viewport_height=3000&format=jpg&delay=3&block_ads=true&block_cookie_banners=true&access_key=free`;
   
   console.log('Taking screenshot of URL...');
   const response = await fetch(screenshotUrl);
   
   if (!response.ok) {
-    // Fallback: try thum.io
-    const thumbUrl = `https://image.thum.io/get/width/1280/wait/3/${url}`;
+    // Fallback: try thum.io with larger height
+    const thumbUrl = `https://image.thum.io/get/width/1280/crop/3000/wait/3/${url}`;
     console.log('Trying fallback screenshot service...');
     const thumbResponse = await fetch(thumbUrl);
     if (!thumbResponse.ok) {
