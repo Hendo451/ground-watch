@@ -28,6 +28,7 @@ export type Database = {
           status: Database["public"]["Enums"]["lightning_status"]
           updated_at: string
           venue_id: string
+          warmup_minutes: number
         }
         Insert: {
           countdown_end?: string | null
@@ -42,6 +43,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string
           venue_id: string
+          warmup_minutes?: number
         }
         Update: {
           countdown_end?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string
           venue_id?: string
+          warmup_minutes?: number
         }
         Relationships: [
           {

@@ -15,7 +15,7 @@ import { TimePicker } from './TimePicker';
 interface AddGameDialogProps {
   venues: Venue[];
   grades: Grade[];
-  onAdd: (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string }) => void;
+  onAdd: (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number }) => void;
   isPending?: boolean;
 }
 
@@ -27,6 +27,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
   const [date, setDate] = useState<Date>();
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [warmupMinutes, setWarmupMinutes] = useState('45');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +40,8 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
       venue_id: venueId, 
       grade_id: gradeId && gradeId !== '__none__' ? gradeId : undefined,
       start_time, 
-      end_time 
+      end_time,
+      warmup_minutes: parseInt(warmupMinutes) || 45
     });
     setOpen(false);
     resetForm();
@@ -52,6 +54,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
     setDate(undefined);
     setStartTime('');
     setEndTime('');
+    setWarmupMinutes('45');
   };
 
   const isValid = venueId && date && startTime && endTime;
@@ -129,7 +132,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
             </Popover>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label>Start Time</Label>
               <TimePicker value={startTime} onChange={setStartTime} />
@@ -138,7 +141,22 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
               <Label>End Time</Label>
               <TimePicker value={endTime} onChange={setEndTime} />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="warmup">Warm-up (mins)</Label>
+              <Input 
+                id="warmup" 
+                type="number" 
+                min="0" 
+                max="120"
+                value={warmupMinutes} 
+                onChange={e => setWarmupMinutes(e.target.value)} 
+                placeholder="45"
+              />
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Lightning monitoring starts {warmupMinutes || 45} minutes before the game begins.
+          </p>
 
           <Button type="submit" className="w-full" disabled={isPending || !isValid}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

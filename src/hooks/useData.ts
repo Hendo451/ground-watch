@@ -33,6 +33,7 @@ export interface Game {
   countdown_end: string | null;
   last_strike_distance: number | null;
   last_strike_at: string | null;
+  warmup_minutes: number;
   created_at: string;
   updated_at: string;
 }
@@ -143,8 +144,12 @@ export const useAddOfficial = () => {
 export const useAddGame = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string }) => {
-      const { data, error } = await supabase.from('games').insert({ ...game, status: 'green' }).select().single();
+    mutationFn: async (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number }) => {
+      const { data, error } = await supabase.from('games').insert({ 
+        ...game, 
+        status: 'green',
+        warmup_minutes: game.warmup_minutes ?? 45
+      }).select().single();
       if (error) throw error;
       return data;
     },
@@ -197,9 +202,13 @@ export const useDeleteGame = () => {
 export const useBulkAddGames = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (games: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string }[]) => {
-      const gamesWithStatus = games.map(g => ({ ...g, status: 'green' as const }));
-      const { data, error } = await supabase.from('games').insert(gamesWithStatus).select();
+    mutationFn: async (games: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number }[]) => {
+      const gamesWithDefaults = games.map(g => ({ 
+        ...g, 
+        status: 'green' as const,
+        warmup_minutes: g.warmup_minutes ?? 45
+      }));
+      const { data, error } = await supabase.from('games').insert(gamesWithDefaults).select();
       if (error) throw error;
       return data;
     },
