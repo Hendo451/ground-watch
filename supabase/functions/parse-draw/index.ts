@@ -120,11 +120,14 @@ Deno.serve(async (req) => {
       try {
         const firecrawlResult = await scrapeWithFirecrawl(content);
         
-        // Prefer screenshot for vision-based extraction, fallback to markdown
-        if (firecrawlResult.screenshot) {
-          imageContent = firecrawlResult.screenshot;
-        } else if (firecrawlResult.markdown) {
+        // Prefer markdown for text-based extraction - captures ALL content including below fold
+        // Only use screenshot if markdown is empty
+        if (firecrawlResult.markdown && firecrawlResult.markdown.length > 100) {
+          console.log('Using markdown content, length:', firecrawlResult.markdown.length);
           textContent = firecrawlResult.markdown;
+        } else if (firecrawlResult.screenshot) {
+          console.log('Markdown empty, using screenshot');
+          imageContent = firecrawlResult.screenshot;
         } else {
           throw new Error('Firecrawl returned no content');
         }
