@@ -36,12 +36,6 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
               {venue.name}
             </p>
           )}
-          {!game.name && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-              <MapPin className="h-3 w-3" />
-              {Number(venue.latitude).toFixed(4)}, {Number(venue.longitude).toFixed(4)}
-            </p>
-          )}
         </div>
         <StatusBadge status={game.status} />
       </div>
