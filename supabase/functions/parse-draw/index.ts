@@ -30,17 +30,51 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+// Use Firecrawl to scrape the page content
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown?: string; screenshot?: string }> {
+  const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!FIRECRAWL_API_KEY) {
+    throw new Error('FIRECRAWL_API_KEY is not configured');
+  }
+
+  console.log('Scraping with Firecrawl:', url);
+  
+  const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      url,
+      formats: ['markdown', 'screenshot'],
+      waitFor: 3000, // Wait for JS to render
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Firecrawl error:', errorText);
+    throw new Error(`Firecrawl request failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log('Firecrawl success, got markdown and screenshot');
+  
+  return {
+    markdown: data.data?.markdown || data.markdown,
+    screenshot: data.data?.screenshot || data.screenshot,
+  };
+}
+
+// Fallback: screenshot service for when Firecrawl is not available
 async function getScreenshotOfUrl(url: string): Promise<string> {
-  // Use a free screenshot API - screenshotone.com has a generous free tier
-  // Alternatively we could use thum.io or other services
-  // Increased viewport height to capture more games on the page
   const screenshotUrl = `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&viewport_width=1280&viewport_height=3000&format=jpg&delay=3&block_ads=true&block_cookie_banners=true&access_key=free`;
   
-  console.log('Taking screenshot of URL...');
+  console.log('Taking screenshot of URL (fallback)...');
   const response = await fetch(screenshotUrl);
   
   if (!response.ok) {
-    // Fallback: try thum.io with larger height
     const thumbUrl = `https://image.thum.io/get/width/1280/crop/3000/wait/3/${url}`;
     console.log('Trying fallback screenshot service...');
     const thumbResponse = await fetch(thumbUrl);
@@ -78,35 +112,47 @@ Deno.serve(async (req) => {
     }
 
     let imageContent = '';
+    let textContent = '';
 
     if (type === 'url') {
-      // For URLs, take a screenshot to handle JavaScript-rendered content
+      // For URLs, use Firecrawl for best results with JavaScript-rendered content
       console.log('Processing URL:', content);
       try {
-        imageContent = await getScreenshotOfUrl(content);
-      } catch (screenshotError) {
-        console.error('Screenshot failed, falling back to HTML fetch:', screenshotError);
-        // Fallback to basic fetch for simple HTML pages
-        const response = await fetch(content);
-        let textContent = await response.text();
-        textContent = textContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-        textContent = textContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-        textContent = textContent.replace(/<[^>]+>/g, ' ');
-        textContent = textContent.replace(/\s+/g, ' ').trim().substring(0, 15000);
+        const firecrawlResult = await scrapeWithFirecrawl(content);
         
-        // Use text content instead
-        const systemPrompt = getSystemPrompt();
-        const aiResponse = await callAI(LOVABLE_API_KEY, systemPrompt, textContent, null);
-        return new Response(
-          JSON.stringify(aiResponse),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // Prefer screenshot for vision-based extraction, fallback to markdown
+        if (firecrawlResult.screenshot) {
+          imageContent = firecrawlResult.screenshot;
+        } else if (firecrawlResult.markdown) {
+          textContent = firecrawlResult.markdown;
+        } else {
+          throw new Error('Firecrawl returned no content');
+        }
+      } catch (firecrawlError) {
+        console.error('Firecrawl failed, trying screenshot fallback:', firecrawlError);
+        try {
+          imageContent = await getScreenshotOfUrl(content);
+        } catch (screenshotError) {
+          console.error('Screenshot failed, falling back to HTML fetch:', screenshotError);
+          // Fallback to basic fetch for simple HTML pages
+          const response = await fetch(content);
+          let htmlContent = await response.text();
+          htmlContent = htmlContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+          htmlContent = htmlContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+          htmlContent = htmlContent.replace(/<[^>]+>/g, ' ');
+          textContent = htmlContent.replace(/\s+/g, ' ').trim().substring(0, 15000);
+        }
       }
     } else if (type === 'image') {
       imageContent = content;
     } else if (type === 'text') {
+      textContent = content;
+    }
+
+    // If we have text content, use text-based extraction
+    if (textContent && !imageContent) {
       const systemPrompt = getSystemPrompt();
-      const aiResponse = await callAI(LOVABLE_API_KEY, systemPrompt, content, null);
+      const aiResponse = await callAI(LOVABLE_API_KEY, systemPrompt, textContent, null);
       return new Response(
         JSON.stringify(aiResponse),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
