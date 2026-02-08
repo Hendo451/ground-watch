@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.lightning-history]
 verify_jwt = false
+
+[functions.heat-monitor]
+verify_jwt = false

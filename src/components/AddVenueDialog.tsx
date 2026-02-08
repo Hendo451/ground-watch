@@ -3,13 +3,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Loader2 } from 'lucide-react';
 import { LocationSearch } from './LocationSearch';
 
+type SportIntensity = 'category_1' | 'category_2' | 'category_3';
+
 interface AddVenueDialogProps {
-  onAdd: (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number }) => void;
+  onAdd: (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number; sport_intensity: SportIntensity }) => void;
   isPending?: boolean;
 }
+
+const intensityOptions: { value: SportIntensity; label: string; description: string }[] = [
+  { value: 'category_1', label: 'Category 1 - Extreme', description: 'AFL, Soccer, Rugby, Long-distance running' },
+  { value: 'category_2', label: 'Category 2 - High', description: 'Basketball, Netball, Tennis, Cricket (batting)' },
+  { value: 'category_3', label: 'Category 3 - Moderate', description: 'Cricket (fielding), Baseball, Golf, Lawn Bowls' },
+];
 
 export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const [open, setOpen] = useState(false);
@@ -17,10 +26,17 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [radius, setRadius] = useState('16');
+  const [sportIntensity, setSportIntensity] = useState<SportIntensity>('category_1');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd({ name, latitude: parseFloat(lat), longitude: parseFloat(lng), safe_zone_radius: parseFloat(radius) });
+    onAdd({ 
+      name, 
+      latitude: parseFloat(lat), 
+      longitude: parseFloat(lng), 
+      safe_zone_radius: parseFloat(radius),
+      sport_intensity: sportIntensity
+    });
   };
 
   const handleLocationSelect = (location: { name: string; latitude: number; longitude: number }) => {
@@ -32,7 +48,7 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
-      setName(''); setLat(''); setLng(''); setRadius('16');
+      setName(''); setLat(''); setLng(''); setRadius('16'); setSportIntensity('category_1');
     }
   };
 
@@ -69,6 +85,27 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
           <div className="space-y-2">
             <Label htmlFor="radius">Safe Zone Radius (km)</Label>
             <Input id="radius" type="number" value={radius} onChange={e => setRadius(e.target.value)} required />
+          </div>
+          <div className="space-y-2">
+            <Label>Sport Intensity Category</Label>
+            <Select value={sportIntensity} onValueChange={(v) => setSportIntensity(v as SportIntensity)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select sport intensity" />
+              </SelectTrigger>
+              <SelectContent>
+                {intensityOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <div>
+                      <span className="font-medium">{opt.label}</span>
+                      <span className="text-xs text-muted-foreground ml-2">({opt.description})</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Used for heat risk calculations per SMA 2024 guidelines.
+            </p>
           </div>
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

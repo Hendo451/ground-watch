@@ -1,8 +1,9 @@
 import { Game, Venue, Official } from '@/hooks/useData';
 import { StatusBadge } from './StatusBadge';
+import { HeatStatusBadge } from './HeatRiskMeter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Zap, User, Pencil } from 'lucide-react';
+import { MapPin, Clock, Zap, User, Pencil, Thermometer } from 'lucide-react';
 
 interface ActiveGameCardProps {
   game: Game;
@@ -37,7 +38,10 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
             </p>
           )}
         </div>
-        <StatusBadge status={game.status} />
+        <div className="flex flex-col items-end gap-1.5">
+          <StatusBadge status={game.status} />
+          <HeatStatusBadge status={game.heat_status} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -49,6 +53,12 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Zap className="h-3.5 w-3.5 text-warning" />
             <span>{game.last_strike_distance} km</span>
+          </div>
+        )}
+        {game.last_temp_c !== null && (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Thermometer className="h-3.5 w-3.5 text-orange-500" />
+            <span>{game.last_temp_c}°C / {game.last_humidity}%</span>
           </div>
         )}
       </div>
@@ -63,6 +73,18 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
       {game.status === 'red' && game.countdown_end && (
         <div className="rounded-md bg-danger/10 border border-danger/20 px-3 py-2 text-xs text-danger font-medium">
           🔒 Game stopped — 30-min restart countdown active
+        </div>
+      )}
+
+      {game.heat_status === 'extreme' && (
+        <div className="rounded-md bg-danger/10 border border-danger/20 px-3 py-2 text-xs text-danger font-medium">
+          🔥 HEAT STOPPAGE — Suspend play per SMA 2024 guidelines
+        </div>
+      )}
+
+      {game.heat_status === 'high' && (
+        <div className="rounded-md bg-orange-500/10 border border-orange-500/20 px-3 py-2 text-xs text-orange-600 font-medium">
+          ⚠️ High heat risk — 10-min breaks every 30 mins required
         </div>
       )}
     </Card>

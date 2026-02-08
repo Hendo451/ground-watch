@@ -2,12 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export type SportIntensity = 'category_1' | 'category_2' | 'category_3';
+export type HeatStatus = 'low' | 'moderate' | 'high' | 'extreme';
+
 export interface Venue {
   id: string;
   name: string;
   latitude: number;
   longitude: number;
   safe_zone_radius: number;
+  sport_intensity: SportIntensity;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +38,10 @@ export interface Game {
   last_strike_distance: number | null;
   last_strike_at: string | null;
   warmup_minutes: number;
+  heat_status: HeatStatus;
+  last_temp_c: number | null;
+  last_humidity: number | null;
+  last_heat_check_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -108,8 +116,11 @@ export const useGames = () => {
 export const useAddVenue = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number }) => {
-      const { data, error } = await supabase.from('venues').insert(venue).select().single();
+    mutationFn: async (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number; sport_intensity?: SportIntensity }) => {
+      const { data, error } = await supabase.from('venues').insert({
+        ...venue,
+        sport_intensity: venue.sport_intensity || 'category_1'
+      }).select().single();
       if (error) throw error;
       return data;
     },
