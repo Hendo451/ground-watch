@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, Game } from '@/hooks/useData';
+import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, Game } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { ActiveGameCard } from '@/components/ActiveGameCard';
 import { AddVenueDialog } from '@/components/AddVenueDialog';
@@ -9,7 +9,7 @@ import { EditGameDialog } from '@/components/EditGameDialog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, MapPin, Users, CalendarClock, Shield, LogOut, Loader2 } from 'lucide-react';
+import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -22,6 +22,7 @@ const Dashboard = () => {
   const addOfficial = useAddOfficial();
   const addGame = useAddGame();
   const updateGame = useUpdateGame();
+  const deleteGame = useDeleteGame();
 
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -39,13 +40,15 @@ const Dashboard = () => {
 
   const isLoading = venuesLoading || officialsLoading || gamesLoading;
 
-  // Filter to active games (current time within start/end window)
+  // Categorize games
   const now = new Date();
   const activeGames = games.filter(g => {
     const start = new Date(g.start_time);
     const end = new Date(g.end_time);
     return now >= start && now <= end;
   });
+  const upcomingGames = games.filter(g => new Date(g.start_time) > now);
+  const pastGames = games.filter(g => new Date(g.end_time) < now);
 
   const statusCounts = {
     red: games.filter(g => g.status === 'red').length,
@@ -145,6 +148,89 @@ const Dashboard = () => {
                   <p className="text-muted-foreground">No active games right now</p>
                 </Card>
               )}
+            </section>
+
+            {/* Scheduled Games */}
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Scheduled Games ({games.length})
+              </h2>
+              <Card className="border-border bg-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                        <th className="text-left px-4 py-3 font-medium">Game</th>
+                        <th className="text-left px-4 py-3 font-medium">Venue</th>
+                        <th className="text-left px-4 py-3 font-medium">Date</th>
+                        <th className="text-left px-4 py-3 font-medium">Time</th>
+                        <th className="text-left px-4 py-3 font-medium">Status</th>
+                        {isAdmin && <th className="text-left px-4 py-3 font-medium">Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {games.length === 0 ? (
+                        <tr>
+                          <td colSpan={isAdmin ? 6 : 5} className="px-4 py-6 text-center text-muted-foreground">No games scheduled</td>
+                        </tr>
+                      ) : (
+                        [...upcomingGames, ...activeGames, ...pastGames].map(game => {
+                          const venue = venues.find(v => v.id === game.venue_id);
+                          const startDate = new Date(game.start_time);
+                          const endDate = new Date(game.end_time);
+                          const isActive = activeGames.some(g => g.id === game.id);
+                          const isPast = pastGames.some(g => g.id === game.id);
+                          return (
+                            <tr key={game.id} className={`border-b border-border/50 last:border-0 ${isPast ? 'opacity-50' : ''}`}>
+                              <td className="px-4 py-3 font-medium text-foreground">
+                                {game.name || <span className="text-muted-foreground italic">Unnamed</span>}
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground">{venue?.name ?? '—'}</td>
+                              <td className="px-4 py-3 text-muted-foreground">
+                                {startDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground">
+                                {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="px-4 py-3">
+                                {isActive ? (
+                                  <StatusBadge status={game.status} size="sm" />
+                                ) : isPast ? (
+                                  <span className="text-xs text-muted-foreground">Completed</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Upcoming</span>
+                                )}
+                              </td>
+                              {isAdmin && (
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingGame(game)}>
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7 text-destructive hover:text-destructive" 
+                                      onClick={() => {
+                                        if (confirm('Delete this game?')) {
+                                          deleteGame.mutate(game.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             </section>
 
             {/* Venues Table */}

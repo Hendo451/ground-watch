@@ -141,3 +141,20 @@ export const useUpdateGame = () => {
     },
   });
 };
+
+export const useDeleteGame = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('games').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      toast.success('Game deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};
