@@ -1,9 +1,11 @@
-import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame } from '@/hooks/useData';
+import { useState } from 'react';
+import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, Game } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { ActiveGameCard } from '@/components/ActiveGameCard';
 import { AddVenueDialog } from '@/components/AddVenueDialog';
 import { AddOfficialDialog } from '@/components/AddOfficialDialog';
 import { AddGameDialog } from '@/components/AddGameDialog';
+import { EditGameDialog } from '@/components/EditGameDialog';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +21,9 @@ const Dashboard = () => {
   const addVenue = useAddVenue();
   const addOfficial = useAddOfficial();
   const addGame = useAddGame();
+  const updateGame = useUpdateGame();
+
+  const [editingGame, setEditingGame] = useState<Game | null>(null);
 
   if (authLoading) {
     return (
@@ -150,7 +155,16 @@ const Dashboard = () => {
                     const venue = venues.find(v => v.id === game.venue_id);
                     const official = officials.find(o => o.venue_id === game.venue_id);
                     if (!venue) return null;
-                    return <ActiveGameCard key={game.id} game={game} venue={venue} official={official} />;
+                    return (
+                      <ActiveGameCard 
+                        key={game.id} 
+                        game={game} 
+                        venue={venue} 
+                        official={official}
+                        canEdit={isAdmin}
+                        onEdit={setEditingGame}
+                      />
+                    );
                   })}
                 </div>
               ) : (
@@ -205,6 +219,18 @@ const Dashboard = () => {
             </section>
           </>
         )}
+
+        <EditGameDialog
+          game={editingGame}
+          open={!!editingGame}
+          onOpenChange={(open) => !open && setEditingGame(null)}
+          onSave={(data) => {
+            updateGame.mutate(data, {
+              onSuccess: () => setEditingGame(null)
+            });
+          }}
+          isPending={updateGame.isPending}
+        />
       </main>
     </div>
   );
