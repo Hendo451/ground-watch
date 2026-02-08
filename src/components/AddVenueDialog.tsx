@@ -20,12 +20,19 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAdd({ name, latitude: parseFloat(lat), longitude: parseFloat(lng), safe_zone_radius: parseFloat(radius) });
-    setOpen(false);
-    setName(''); setLat(''); setLng(''); setRadius('16');
+    // Only close after successful submission - parent will handle via mutation callbacks
+  };
+
+  // Reset form when dialog closes
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      setName(''); setLat(''); setLng(''); setRadius('16');
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5">
           <Plus className="h-4 w-4" /> Add Venue
