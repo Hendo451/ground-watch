@@ -31,7 +31,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
     onAdd({ 
       name: name || undefined, 
       venue_id: venueId, 
-      grade_id: gradeId || undefined,
+      grade_id: gradeId && gradeId !== '__none__' ? gradeId : undefined,
       start_time, 
       end_time 
     });
@@ -58,12 +58,12 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="game-grade">Grade (optional)</Label>
-              <Select value={gradeId} onValueChange={setGradeId}>
+              <Select value={gradeId || '__none__'} onValueChange={setGradeId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select grade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No grade</SelectItem>
+                  <SelectItem value="__none__">No grade</SelectItem>
                   {grades.map(g => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
