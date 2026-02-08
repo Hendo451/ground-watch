@@ -24,6 +24,7 @@ export interface Official {
 
 export interface Game {
   id: string;
+  name: string | null;
   venue_id: string;
   start_time: string;
   end_time: string;
@@ -107,7 +108,7 @@ export const useAddOfficial = () => {
 export const useAddGame = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (game: { venue_id: string; start_time: string; end_time: string }) => {
+    mutationFn: async (game: { name?: string; venue_id: string; start_time: string; end_time: string }) => {
       const { data, error } = await supabase.from('games').insert({ ...game, status: 'green' }).select().single();
       if (error) throw error;
       return data;
@@ -115,6 +116,25 @@ export const useAddGame = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
       toast.success('Game scheduled successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};
+
+export const useUpdateGame = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (game: { id: string; name?: string; start_time?: string; end_time?: string }) => {
+      const { id, ...updates } = game;
+      const { data, error } = await supabase.from('games').update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      toast.success('Game updated successfully');
     },
     onError: (error: Error) => {
       toast.error(error.message);

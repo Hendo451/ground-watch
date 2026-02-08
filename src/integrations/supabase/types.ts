@@ -22,6 +22,7 @@ export type Database = {
           id: string
           last_strike_at: string | null
           last_strike_distance: number | null
+          name: string | null
           start_time: string
           status: Database["public"]["Enums"]["lightning_status"]
           updated_at: string
@@ -34,6 +35,7 @@ export type Database = {
           id?: string
           last_strike_at?: string | null
           last_strike_distance?: number | null
+          name?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string
@@ -46,6 +48,7 @@ export type Database = {
           id?: string
           last_strike_at?: string | null
           last_strike_distance?: number | null
+          name?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string

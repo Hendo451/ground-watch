@@ -9,12 +9,13 @@ import { Venue } from '@/hooks/useData';
 
 interface AddGameDialogProps {
   venues: Venue[];
-  onAdd: (game: { venue_id: string; start_time: string; end_time: string }) => void;
+  onAdd: (game: { name?: string; venue_id: string; start_time: string; end_time: string }) => void;
   isPending?: boolean;
 }
 
 export const AddGameDialog = ({ venues, onAdd, isPending }: AddGameDialogProps) => {
   const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
   const [venueId, setVenueId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -25,9 +26,9 @@ export const AddGameDialog = ({ venues, onAdd, isPending }: AddGameDialogProps) 
     e.preventDefault();
     const start_time = `${startDate}T${startTime}:00`;
     const end_time = `${endDate}T${endTime}:00`;
-    onAdd({ venue_id: venueId, start_time, end_time });
+    onAdd({ name: name || undefined, venue_id: venueId, start_time, end_time });
     setOpen(false);
-    setVenueId(''); setStartDate(''); setStartTime(''); setEndDate(''); setEndTime('');
+    setName(''); setVenueId(''); setStartDate(''); setStartTime(''); setEndDate(''); setEndTime('');
   };
 
   return (
@@ -42,6 +43,10 @@ export const AddGameDialog = ({ venues, onAdd, isPending }: AddGameDialogProps) 
           <DialogTitle>Schedule Game</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="game-name">Game Name (optional)</Label>
+            <Input id="game-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. U15 Semi-Final" />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="game-venue">Venue</Label>
             <Select value={venueId} onValueChange={setVenueId} required>
