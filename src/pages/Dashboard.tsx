@@ -249,7 +249,7 @@ const Dashboard = () => {
                             <td colSpan={isAdmin ? 7 : 6} className="px-4 py-6 text-center text-muted-foreground">No games scheduled</td>
                           </tr>
                         ) : (
-                          [...upcomingGames, ...activeGames, ...pastGames].map(game => {
+                          [...activeGames, ...upcomingGames.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()), ...pastGames.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())].map(game => {
                             const venue = venues.find(v => v.id === game.venue_id);
                             const grade = game.grade_id ? grades.find(g => g.id === game.grade_id) : null;
                             const startDate = new Date(game.start_time);

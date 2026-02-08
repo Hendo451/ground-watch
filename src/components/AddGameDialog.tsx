@@ -21,13 +21,12 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
   const [gradeId, setGradeId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const start_time = `${startDate}T${startTime}:00`;
-    const end_time = `${endDate}T${endTime}:00`;
+    const end_time = `${startDate}T${endTime}:00`; // Same day as start
     onAdd({ 
       name: name || undefined, 
       venue_id: venueId, 
@@ -36,7 +35,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
       end_time 
     });
     setOpen(false);
-    setName(''); setVenueId(''); setGradeId(''); setStartDate(''); setStartTime(''); setEndDate(''); setEndTime('');
+    setName(''); setVenueId(''); setGradeId(''); setStartDate(''); setStartTime(''); setEndTime('');
   };
 
   return (
@@ -84,20 +83,14 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="start-date">Start Date</Label>
+              <Label htmlFor="start-date">Date</Label>
               <Input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="start-time">Start Time</Label>
               <Input id="start-time" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="end-date">End Date</Label>
-              <Input id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="end-time">End Time</Label>
