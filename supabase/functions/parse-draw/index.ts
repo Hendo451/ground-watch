@@ -124,6 +124,10 @@ Deno.serve(async (req) => {
         // Only use screenshot if markdown is empty
         if (firecrawlResult.markdown && firecrawlResult.markdown.length > 100) {
           console.log('Using markdown content, length:', firecrawlResult.markdown.length);
+          // Log sections containing time-like patterns to debug extraction
+          const lines = firecrawlResult.markdown.split('\n');
+          const timeLines = lines.filter(l => /\d{1,2}:\d{2}/.test(l) || /am|pm|AM|PM/.test(l));
+          console.log('Lines with times:', JSON.stringify(timeLines.slice(0, 30)));
           textContent = firecrawlResult.markdown;
         } else if (firecrawlResult.screenshot) {
           console.log('Markdown empty, using screenshot');
@@ -188,10 +192,17 @@ For each game found, extract:
 - name: The game/match name combining teams (e.g., "Panthers vs Eels", "Round 4 - Bulldogs vs Knights")
 - venue: The venue/ground name where the game is played
 - date: The date in YYYY-MM-DD format. Use 2026 as the year if not specified.
-- startTime: Start time in HH:MM format (24-hour). Convert AM/PM to 24-hour format.
+- startTime: Start time in HH:MM format (24-hour LOCAL Australian time).
 - endTime: End time in HH:MM format (24-hour). If not specified, assume 2 hours after start time.
 
-IMPORTANT: Look carefully for match cards showing team names, kick-off times, dates, and venues.
+CRITICAL TIME RULES:
+- Many websites display times in UTC but label them as local. You MUST detect and correct this.
+- Australian community/junior rugby league games are ALWAYS played between 08:00 and 17:00 local time.
+- If the source shows times like "8:00pm", "10:00pm", "11:15pm" for community/junior sports, these are WRONG and are actually AM times. Convert: "8:00pm" → "08:00", "10:00pm" → "10:00", "11:15pm" → "11:15", "12:00am" → "12:00" (noon), "1:00am" → "13:00", "3:00am" → "15:00".
+- The key rule: if extracted times fall between 18:00-05:00 for community/junior sports, add 12 hours (or subtract 12 hours) to bring them into the 06:00-17:00 range.
+- For professional/NRL matches, evening times (e.g., 19:00, 20:00) may be correct.
+
+Look carefully for match cards showing team names, kick-off times, dates, and venues.
 The current year is 2026.
 
 Return ONLY a valid JSON array of games. No explanations, no markdown, just the JSON array.
@@ -199,8 +210,8 @@ If you cannot find any games, return an empty array: []
 
 Example output:
 [
-  {"name": "Panthers vs Eels", "venue": "Parker Street Reserve, Penrith", "date": "2026-03-27", "startTime": "03:30", "endTime": "05:30"},
-  {"name": "Silktails vs Dragons", "venue": "Govind Park, Fiji", "date": "2026-03-27", "startTime": "20:00", "endTime": "22:00"}
+  {"name": "Panthers vs Eels", "venue": "Parker Street Reserve, Penrith", "date": "2026-03-27", "startTime": "09:30", "endTime": "11:30"},
+  {"name": "Silktails vs Dragons", "venue": "Govind Park, Fiji", "date": "2026-03-27", "startTime": "14:00", "endTime": "16:00"}
 ]`;
 }
 
