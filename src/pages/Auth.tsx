@@ -48,7 +48,7 @@ const Auth = () => {
           <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto">
             <Zap className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">StrikeGuard</h1>
+          <h1 className="text-xl font-bold text-foreground">GameGuard</h1>
           <p className="text-sm text-muted-foreground">
             {isLogin ? 'Sign in to access the dashboard' : 'Create an account to get started'}
           </p>

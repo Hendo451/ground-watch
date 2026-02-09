@@ -110,8 +110,8 @@ const Dashboard = () => {
               <Zap className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-foreground tracking-tight">StrikeGuard</h1>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Lightning Safety</p>
+              <h1 className="text-sm font-bold text-foreground tracking-tight">GameGuard</h1>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Game Day Safety</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
