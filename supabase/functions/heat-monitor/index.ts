@@ -93,11 +93,11 @@ function getAlertMessage(
 
   switch (status) {
     case "extreme":
-      return `🔴 HEAT STOPPAGE: Conditions at ${venueName} are EXTREME (${tempC}°C, ${humidity}% humidity). Suspend play immediately as per SMA 2024 guidelines.`;
+      return `HEAT STOPPAGE ${venueName}: ${tempC}C ${humidity}%RH. Suspend play now. SMA 2024.`;
     case "high":
-      return `🟠 HEAT ALERT for ${venueName}: Conditions are HIGH RISK (${tempC}°C, ${humidity}% humidity) for ${sportType}. Implement mandatory 10-minute rest breaks every 30 minutes. Use ice towels.`;
+      return `HEAT ALERT ${venueName}: ${tempC}C ${humidity}%RH. 10min rest every 30min. Ice towels.`;
     case "moderate":
-      return `🟡 HEAT CAUTION for ${venueName}: Conditions are MODERATE RISK (${tempC}°C, ${humidity}% humidity). Ensure pre-exercise hydration and monitor players.`;
+      return `HEAT CAUTION ${venueName}: ${tempC}C ${humidity}%RH. Hydrate and monitor players.`;
     default:
       return "";
   }
