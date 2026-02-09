@@ -64,7 +64,7 @@ export const LocationSearch = ({ onSelect, placeholder = "Search for a venue..."
           {
             headers: {
               'Accept': 'application/json',
-              'User-Agent': 'StrikeGuard/1.0'
+              'User-Agent': 'GameGuard/1.0'
             }
           }
         );
