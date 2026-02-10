@@ -87,6 +87,21 @@ const Dashboard = () => {
     return now >= start && now <= end;
   });
   const upcomingGames = games.filter(g => new Date(g.start_time) > now);
+
+  // Games this week (Mon–Sun)
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  startOfWeek.setDate(startOfWeek.getDate() + diffToMon);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 7);
+  const thisWeekGames = games
+    .filter(g => {
+      const start = new Date(g.start_time);
+      return start >= startOfWeek && start < endOfWeek;
+    })
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   const pastGames = games.filter(g => new Date(g.end_time) < now);
 
   const statusCounts = {
@@ -191,15 +206,15 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
-            {/* Active Games */}
+            {/* Games This Week */}
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
-                Active Games ({activeGames.length})
+                Games This Week ({thisWeekGames.length})
               </h2>
-              {activeGames.length > 0 ? (
+              {thisWeekGames.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {activeGames.map(game => {
+                  {thisWeekGames.map(game => {
                     const venue = venues.find(v => v.id === game.venue_id);
                     const official = officials.find(o => o.venue_id === game.venue_id);
                     if (!venue) return null;
@@ -217,7 +232,7 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <Card className="bg-card border-border p-6 text-center">
-                  <p className="text-muted-foreground">No active games right now</p>
+                  <p className="text-muted-foreground">No games scheduled this week</p>
                 </Card>
               )}
             </section>

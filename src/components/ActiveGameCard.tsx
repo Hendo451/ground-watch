@@ -3,7 +3,7 @@ import { StatusBadge } from './StatusBadge';
 import { HeatStatusBadge } from './HeatRiskMeter';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Zap, User, Pencil, Thermometer } from 'lucide-react';
+import { MapPin, Clock, Zap, User, Pencil, Thermometer, Calendar } from 'lucide-react';
 
 interface ActiveGameCardProps {
   game: Game;
@@ -16,6 +16,8 @@ interface ActiveGameCardProps {
 export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: ActiveGameCardProps) => {
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatDay = (iso: string) =>
+    new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
   const gameName = game.name || venue.name;
 
@@ -45,6 +47,10 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Calendar className="h-3.5 w-3.5" />
+          <span>{formatDay(game.start_time)}</span>
+        </div>
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           <span>{formatTime(game.start_time)} – {formatTime(game.end_time)}</span>
