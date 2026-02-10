@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.heat-monitor]
 verify_jwt = false
+
+[functions.weather-forecast]
+verify_jwt = false
+
+[functions.parse-draw]
+verify_jwt = false
