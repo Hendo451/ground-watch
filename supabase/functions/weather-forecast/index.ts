@@ -129,17 +129,18 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Build a map of date → { maxTempC, humidity } from forecast periods
-      const dailyConditions = new Map<string, { tempC: number; humidity: number }>();
+      // Build a map of date → { maxTempC, humidity, icon } from forecast periods
+      const dailyConditions = new Map<string, { tempC: number; humidity: number; icon: string | null }>();
       const periods = data.response[0]?.periods ?? [];
       for (const period of periods) {
         const dateKey = period.dateTimeISO?.slice(0, 10);
         if (!dateKey) continue;
         const tempC = period.maxTempC ?? period.tempC ?? null;
         const humidity = period.humidity ?? period.maxHumidity ?? null;
-        console.log(`  Forecast ${dateKey}: maxC=${tempC}, humidity=${humidity}`);
+        const icon = period.icon ?? null;
+        console.log(`  Forecast ${dateKey}: maxC=${tempC}, humidity=${humidity}, icon=${icon}`);
         if (tempC != null && humidity != null) {
-          dailyConditions.set(dateKey, { tempC, humidity });
+          dailyConditions.set(dateKey, { tempC, humidity, icon });
         }
       }
 
@@ -161,6 +162,7 @@ Deno.serve(async (req) => {
             last_humidity: firstConditions.humidity,
             heat_status: heatStatus,
             last_heat_check_at: now.toISOString(),
+            weather_icon: firstConditions.icon,
           }).eq("id", game.id);
           updated++;
           continue;
@@ -175,6 +177,7 @@ Deno.serve(async (req) => {
           last_humidity: humidity,
           heat_status: heatStatus,
           last_heat_check_at: now.toISOString(),
+          weather_icon: conditions.icon,
         }).eq("id", game.id);
 
         updated++;
