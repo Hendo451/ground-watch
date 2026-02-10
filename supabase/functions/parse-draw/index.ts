@@ -31,7 +31,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 // Use Firecrawl to scrape the page content
-async function scrapeWithFirecrawl(url: string): Promise<{ markdown?: string; screenshot?: string }> {
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown?: string; screenshot?: string; html?: string }> {
   const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
   if (!FIRECRAWL_API_KEY) {
     throw new Error('FIRECRAWL_API_KEY is not configured');
@@ -47,8 +47,8 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown?: string; sc
     },
     body: JSON.stringify({
       url,
-      formats: ['markdown', 'screenshot'],
-      waitFor: 3000, // Wait for JS to render
+      formats: ['markdown', 'screenshot@fullPage', 'rawHtml'],
+      waitFor: 5000, // Wait for JS to render
     }),
   });
 
@@ -59,15 +59,75 @@ async function scrapeWithFirecrawl(url: string): Promise<{ markdown?: string; sc
   }
 
   const data = await response.json();
-  console.log('Firecrawl success, got markdown and screenshot');
+  console.log('Firecrawl success');
   
   return {
     markdown: data.data?.markdown || data.markdown,
     screenshot: data.data?.screenshot || data.screenshot,
+    html: data.data?.rawHtml || data.rawHtml,
   };
 }
 
-// Fallback: screenshot service for when Firecrawl is not available
+// Extract ISO 8601 datetime strings from HTML (e.g., data attributes, datetime elements)
+function extractISODatetimes(html: string): string[] {
+  const isoPattern = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})/g;
+  const matches = html.match(isoPattern) || [];
+  return [...new Set(matches)];
+}
+
+// Convert UTC ISO timestamp to AEST/AEDT local time string
+function utcToAEST(isoStr: string): { date: string; time: string; hour12: string } {
+  const d = new Date(isoStr);
+  
+  // Proper AEDT detection: first Sunday in October to first Sunday in April
+  const year = d.getUTCFullYear();
+  const aedtStart = getFirstSundayOfMonth(year, 9); // October (0-indexed)
+  const aedtEnd = getFirstSundayOfMonth(year, 3); // April (0-indexed)
+  
+  // AEDT applies from first Sunday of October at 2am AEST (16:00 UTC prev day) 
+  // to first Sunday of April at 3am AEDT (16:00 UTC prev day)
+  const isAEDT = d >= aedtStart || d < aedtEnd;
+  const offset = isAEDT ? 11 : 10;
+  
+  const local = new Date(d.getTime() + offset * 60 * 60 * 1000);
+  const dateStr = local.toISOString().slice(0, 10);
+  const hours = local.getUTCHours();
+  const mins = local.getUTCMinutes();
+  const timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  
+  const h12 = hours % 12 || 12;
+  const ampm = hours < 12 ? 'am' : 'pm';
+  const time12 = mins === 0 ? `${h12}:00${ampm}` : `${h12}:${mins.toString().padStart(2, '0')}${ampm}`;
+  
+  return { date: dateStr, time: timeStr, hour12: time12 };
+}
+
+function getFirstSundayOfMonth(year: number, month: number): Date {
+  const d = new Date(Date.UTC(year, month, 1));
+  const day = d.getUTCDay(); // 0=Sunday
+  const firstSunday = day === 0 ? 1 : 8 - day;
+  return new Date(Date.UTC(year, month, firstSunday, 16, 0, 0)); // 2am AEST = 16:00 UTC prev concept
+}
+
+// Fix markdown times by finding UTC ISO dates in HTML and replacing wrong times in markdown
+function fixMarkdownTimes(markdown: string, html: string): string {
+  const isoDateTimes = extractISODatetimes(html);
+  if (isoDateTimes.length === 0) return markdown;
+  
+  console.log('Found', isoDateTimes.length, 'ISO timestamps, converting to AEST');
+  
+  // Build a mapping of converted times for the AI prompt
+  const timeInfo = isoDateTimes.map(iso => {
+    const converted = utcToAEST(iso);
+    return `${iso} → ${converted.date} ${converted.time} (${converted.hour12}) AEST`;
+  });
+  
+  // Prepend the timezone conversion reference to the markdown
+  const header = `TIMEZONE REFERENCE - The following UTC timestamps were found in the page source. Use these AEST-converted times instead of any times displayed in the content below:\n${timeInfo.join('\n')}\n\n---\n\n`;
+  
+  return header + markdown;
+}
+
 async function getScreenshotOfUrl(url: string): Promise<string> {
   const screenshotUrl = `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&viewport_width=1280&viewport_height=3000&format=jpg&delay=3&block_ads=true&block_cookie_banners=true&access_key=free`;
   
@@ -115,20 +175,19 @@ Deno.serve(async (req) => {
     let textContent = '';
 
     if (type === 'url') {
-      // For URLs, use Firecrawl for best results with JavaScript-rendered content
       console.log('Processing URL:', content);
       try {
         const firecrawlResult = await scrapeWithFirecrawl(content);
         
-        // Prefer markdown for text-based extraction - captures ALL content including below fold
-        // Only use screenshot if markdown is empty
+        // Best approach: use markdown but fix the times using ISO timestamps from raw HTML
         if (firecrawlResult.markdown && firecrawlResult.markdown.length > 100) {
-          console.log('Using markdown content, length:', firecrawlResult.markdown.length);
-          // Log sections containing time-like patterns to debug extraction
-          const lines = firecrawlResult.markdown.split('\n');
-          const timeLines = lines.filter(l => /\d{1,2}:\d{2}/.test(l) || /am|pm|AM|PM/.test(l));
-          console.log('Lines with times:', JSON.stringify(timeLines.slice(0, 30)));
-          textContent = firecrawlResult.markdown;
+          if (firecrawlResult.html) {
+            textContent = fixMarkdownTimes(firecrawlResult.markdown, firecrawlResult.html);
+            console.log('Using markdown with fixed AEST times');
+          } else {
+            textContent = firecrawlResult.markdown;
+            console.log('Using markdown (no HTML available for time fix)');
+          }
         } else if (firecrawlResult.screenshot) {
           console.log('Markdown empty, using screenshot');
           imageContent = firecrawlResult.screenshot;
@@ -141,7 +200,6 @@ Deno.serve(async (req) => {
           imageContent = await getScreenshotOfUrl(content);
         } catch (screenshotError) {
           console.error('Screenshot failed, falling back to HTML fetch:', screenshotError);
-          // Fallback to basic fetch for simple HTML pages
           const response = await fetch(content);
           let htmlContent = await response.text();
           htmlContent = htmlContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
@@ -191,16 +249,18 @@ function getSystemPrompt(): string {
 For each game found, extract:
 - name: The game/match name combining teams (e.g., "Panthers vs Eels", "Round 4 - Bulldogs vs Knights")
 - venue: The venue/ground name where the game is played
-- date: The date in YYYY-MM-DD format. Use 2026 as the year if not specified.
-- startTime: Start time in HH:MM format (24-hour LOCAL Australian time).
+- date: The date in YYYY-MM-DD format (in AEST/AEDT local time). Use 2026 as the year if not specified.
+- startTime: Start time in HH:MM format (24-hour, AEST/AEDT local Australian time).
 - endTime: End time in HH:MM format (24-hour). If not specified, assume 2 hours after start time.
 
 CRITICAL TIME RULES:
-- Many websites display times in UTC but label them as local. You MUST detect and correct this.
-- Australian community/junior rugby league games are ALWAYS played between 08:00 and 17:00 local time.
-- If the source shows times like "8:00pm", "10:00pm", "11:15pm" for community/junior sports, these are WRONG and are actually AM times. Convert: "8:00pm" → "08:00", "10:00pm" → "10:00", "11:15pm" → "11:15", "12:00am" → "12:00" (noon), "1:00am" → "13:00", "3:00am" → "15:00".
-- The key rule: if extracted times fall between 18:00-05:00 for community/junior sports, add 12 hours (or subtract 12 hours) to bring them into the 06:00-17:00 range.
-- For professional/NRL matches, evening times (e.g., 19:00, 20:00) may be correct.
+- If the content contains ISO 8601 UTC timestamps (ending in Z or +00:00), you MUST convert them to Australian Eastern Time:
+  - AEDT (UTC+11): October to April (daylight saving)
+  - AEST (UTC+10): April to October (standard time)
+  - Example: "2026-04-03T00:00:00.000Z" in AEDT = April 3 at 11:00 AM local time (startTime: "11:00", date: "2026-04-03")
+  - Example: "2026-07-17T08:00:00.000Z" in AEST = July 17 at 6:00 PM local time
+- The date MUST also be converted - a UTC timestamp at e.g. 2026-04-02T21:00:00Z is actually April 3 in AEST/AEDT.
+- If no ISO timestamps, use displayed times but sanity-check: community/junior sports are between 08:00-17:00.
 
 Look carefully for match cards showing team names, kick-off times, dates, and venues.
 The current year is 2026.
