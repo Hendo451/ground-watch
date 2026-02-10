@@ -33,8 +33,12 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
     e.preventDefault();
     if (!date) return;
     const dateStr = format(date, 'yyyy-MM-dd');
-    const start_time = `${dateStr}T${startTime}:00`;
-    const end_time = `${dateStr}T${endTime}:00`;
+    // Build date-time in the user's local timezone by using a Date object
+    // to get the correct UTC representation
+    const startDate = new Date(`${dateStr}T${startTime}:00`);
+    const endDate = new Date(`${dateStr}T${endTime}:00`);
+    const start_time = startDate.toISOString();
+    const end_time = endDate.toISOString();
     onAdd({ 
       name: name || undefined, 
       venue_id: venueId, 

@@ -91,8 +91,8 @@ export const ReviewImportDialog = ({
       .map(g => ({
         name: g.name || undefined,
         venue_id: g.venueId,
-        start_time: `${g.date}T${g.startTime}:00`,
-        end_time: `${g.date}T${g.endTime}:00`,
+        start_time: new Date(`${g.date}T${g.startTime}:00`).toISOString(),
+        end_time: new Date(`${g.date}T${g.endTime}:00`).toISOString(),
       }));
     
     onConfirm(validGames as { name: string; venue_id: string; start_time: string; end_time: string }[]);
