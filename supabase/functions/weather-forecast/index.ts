@@ -107,44 +107,75 @@ Deno.serve(async (req) => {
     let updated = 0;
 
     for (const [, { venue, games: venueGames }] of venueMap) {
-      // Use conditions endpoint for current weather at venue
-      const conditionsUrl = `https://data.api.xweather.com/conditions/${venue.latitude},${venue.longitude}?client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
+      // Use forecasts endpoint with format=json&filter=day
+      const forecastUrl = `https://data.api.xweather.com/forecasts/${venue.latitude},${venue.longitude}?format=json&filter=day&limit=7&client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
 
-      console.log(`Fetching current conditions for ${venue.name}`);
+      console.log(`Fetching forecast for ${venue.name}`);
 
-      const res = await fetch(conditionsUrl);
+      const res = await fetch(forecastUrl);
       const data = await res.json();
 
+      console.log(`Raw response keys for ${venue.name}:`, JSON.stringify(Object.keys(data)));
+      if (data.response?.[0]) {
+        console.log(`Response[0] keys:`, JSON.stringify(Object.keys(data.response[0])));
+        if (data.response[0].periods?.[0]) {
+          console.log(`First period keys:`, JSON.stringify(Object.keys(data.response[0].periods[0])));
+          console.log(`First period sample:`, JSON.stringify(data.response[0].periods[0]).slice(0, 500));
+        }
+      }
+
       if (!data.success || !data.response || data.response.length === 0) {
-        console.error(`Failed to get conditions for ${venue.name}:`, JSON.stringify(data.error));
+        console.error(`Failed to get forecast for ${venue.name}:`, JSON.stringify(data.error));
         continue;
       }
 
-      // Get current conditions and apply to all games at this venue
-      const ob = data.response[0]?.periods?.[0] ?? data.response[0]?.ob ?? null;
-      const tempC = ob?.tempC ?? ob?.maxTempC ?? null;
-      const humidity = ob?.humidity ?? null;
-      console.log(`  ${venue.name}: tempC=${tempC}, humidity=${humidity}`);
-
-      if (tempC == null || humidity == null) {
-        console.log(`  Missing temp/humidity data for ${venue.name}, skipping`);
-        continue;
+      // Build a map of date → { maxTempC, humidity } from forecast periods
+      const dailyConditions = new Map<string, { tempC: number; humidity: number }>();
+      const periods = data.response[0]?.periods ?? [];
+      for (const period of periods) {
+        const dateKey = period.dateTimeISO?.slice(0, 10);
+        if (!dateKey) continue;
+        const tempC = period.maxTempC ?? period.tempC ?? null;
+        const humidity = period.humidity ?? period.maxHumidity ?? null;
+        console.log(`  Forecast ${dateKey}: maxC=${tempC}, humidity=${humidity}`);
+        if (tempC != null && humidity != null) {
+          dailyConditions.set(dateKey, { tempC, humidity });
+        }
       }
 
-      // Apply current conditions to all games at this venue
+      console.log(`Got ${dailyConditions.size} daily forecasts for ${venue.name}`);
+
+      // Match each game to its day's forecast
       for (const game of venueGames) {
-        const heatStatus = calculateHeatStatus(tempC, humidity, venue.sport_intensity);
-        console.log(`  Game ${game.id}: ${tempC}°C / ${humidity}% → ${heatStatus}`);
+        const gameDate = game.start_time.slice(0, 10);
+        const conditions = dailyConditions.get(gameDate);
 
-        await supabase
-          .from("games")
-          .update({
-            last_temp_c: tempC,
-            last_humidity: humidity,
+        if (!conditions) {
+          console.log(`  No forecast for ${venue.name} on ${gameDate}, using closest available`);
+          // Fall back to first available forecast
+          const firstConditions = dailyConditions.values().next().value;
+          if (!firstConditions) continue;
+          const heatStatus = calculateHeatStatus(firstConditions.tempC, firstConditions.humidity, venue.sport_intensity);
+          await supabase.from("games").update({
+            last_temp_c: firstConditions.tempC,
+            last_humidity: firstConditions.humidity,
             heat_status: heatStatus,
             last_heat_check_at: now.toISOString(),
-          })
-          .eq("id", game.id);
+          }).eq("id", game.id);
+          updated++;
+          continue;
+        }
+
+        const { tempC, humidity } = conditions;
+        const heatStatus = calculateHeatStatus(tempC, humidity, venue.sport_intensity);
+        console.log(`  Game ${game.id} on ${gameDate}: ${tempC}°C / ${humidity}% → ${heatStatus}`);
+
+        await supabase.from("games").update({
+          last_temp_c: tempC,
+          last_humidity: humidity,
+          heat_status: heatStatus,
+          last_heat_check_at: now.toISOString(),
+        }).eq("id", game.id);
 
         updated++;
       }
