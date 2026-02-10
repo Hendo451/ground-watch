@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+    console.log(`Xweather credentials: ID starts with "${XWEATHER_CLIENT_ID?.slice(0, 5)}...", Secret starts with "${XWEATHER_CLIENT_SECRET?.slice(0, 5)}..."`);
     if (!XWEATHER_CLIENT_ID || !XWEATHER_CLIENT_SECRET) {
       throw new Error("Xweather credentials not configured");
     }
