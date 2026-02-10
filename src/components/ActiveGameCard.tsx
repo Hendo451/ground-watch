@@ -134,6 +134,13 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
         {/* Conditions row — shows when data is available */}
         {(game.last_temp_c !== null || game.last_strike_distance !== null) && (
           <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-1.5">
+            {game.weather_icon && (
+              <img
+                src={`https://cdn.aerisapi.com/wxicons/v2/${game.weather_icon}`}
+                alt="Weather"
+                className="h-6 w-6"
+              />
+            )}
             {game.last_temp_c !== null && (
               <span className="flex items-center gap-1">
                 <Thermometer className="h-3 w-3" />

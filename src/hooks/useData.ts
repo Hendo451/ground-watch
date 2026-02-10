@@ -42,6 +42,7 @@ export interface Game {
   last_temp_c: number | null;
   last_humidity: number | null;
   last_heat_check_at: string | null;
+  weather_icon: string | null;
   created_at: string;
   updated_at: string;
 }

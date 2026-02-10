@@ -33,6 +33,7 @@ export type Database = {
           updated_at: string
           venue_id: string
           warmup_minutes: number
+          weather_icon: string | null
         }
         Insert: {
           countdown_end?: string | null
@@ -52,6 +53,7 @@ export type Database = {
           updated_at?: string
           venue_id: string
           warmup_minutes?: number
+          weather_icon?: string | null
         }
         Update: {
           countdown_end?: string | null
@@ -71,6 +73,7 @@ export type Database = {
           updated_at?: string
           venue_id?: string
           warmup_minutes?: number
+          weather_icon?: string | null
         }
         Relationships: [
           {
