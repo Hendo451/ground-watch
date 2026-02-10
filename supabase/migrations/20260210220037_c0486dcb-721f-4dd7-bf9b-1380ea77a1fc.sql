@@ -1,0 +1,1 @@
+ALTER TABLE public.games ADD COLUMN lightning_forecast text NOT NULL DEFAULT 'clear';

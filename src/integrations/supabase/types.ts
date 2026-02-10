@@ -27,6 +27,7 @@ export type Database = {
           last_strike_at: string | null
           last_strike_distance: number | null
           last_temp_c: number | null
+          lightning_forecast: string
           name: string | null
           start_time: string
           status: Database["public"]["Enums"]["lightning_status"]
@@ -47,6 +48,7 @@ export type Database = {
           last_strike_at?: string | null
           last_strike_distance?: number | null
           last_temp_c?: number | null
+          lightning_forecast?: string
           name?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["lightning_status"]
@@ -67,6 +69,7 @@ export type Database = {
           last_strike_at?: string | null
           last_strike_distance?: number | null
           last_temp_c?: number | null
+          lightning_forecast?: string
           name?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["lightning_status"]
