@@ -58,8 +58,15 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get games in the next 7 days that haven't started yet
+    // Parse optional body params
+    let backfillDays = 0;
+    try {
+      const body = await req.json();
+      if (body?.backfillDays) backfillDays = Math.min(Number(body.backfillDays), 7);
+    } catch { /* no body */ }
+
     const now = new Date();
+    const lookBack = new Date(now.getTime() - backfillDays * 24 * 60 * 60 * 1000);
     const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     const { data: games, error: gamesError } = await supabase
@@ -67,7 +74,7 @@ Deno.serve(async (req) => {
       .select(
         "id, venue_id, start_time, heat_status, venues(id, name, latitude, longitude, sport_intensity)"
       )
-      .gt("start_time", now.toISOString())
+      .gt("start_time", lookBack.toISOString())
       .lt("start_time", weekAhead.toISOString());
 
     if (gamesError) throw gamesError;
@@ -100,7 +107,7 @@ Deno.serve(async (req) => {
 
     for (const [, { venue, games: venueGames }] of venueMap) {
       // Use conditions/summary endpoint for daily max temp & humidity
-      const fromDate = now.toISOString().slice(0, 10);
+      const fromDate = lookBack.toISOString().slice(0, 10);
       const toDate = weekAhead.toISOString().slice(0, 10);
       const summaryUrl = `https://data.api.xweather.com/conditions/summary/${venue.latitude},${venue.longitude}?from=${fromDate}&to=${toDate}&client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
 
@@ -110,7 +117,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (!data.success || !data.response || data.response.length === 0) {
-        console.error(`Failed to get conditions summary for ${venue.name}:`, data.error);
+        console.error(`Failed to get conditions summary for ${venue.name}:`, JSON.stringify(data.error));
         continue;
       }
 
@@ -122,20 +129,22 @@ Deno.serve(async (req) => {
         if (!dateKey) continue;
         const tempC = period.temp?.maxC ?? null;
         const humidity = period.humidity?.max ?? null;
+        console.log(`  Period ${dateKey}: maxC=${tempC}, maxHumidity=${humidity}`);
         if (tempC != null && humidity != null) {
           dailyConditions.set(dateKey, { tempC, humidity });
         }
       }
 
-      console.log(`Got ${dailyConditions.size} daily summaries for ${venue.name}`);
+      console.log(`Got ${dailyConditions.size} daily summaries for ${venue.name}. Keys: ${[...dailyConditions.keys()].join(', ')}`);
 
       // Match each game to its day's summary
       for (const game of venueGames) {
         const gameDate = game.start_time.slice(0, 10);
+        console.log(`  Matching game ${game.id} date=${gameDate}`);
         const conditions = dailyConditions.get(gameDate);
 
         if (!conditions) {
-          console.log(`No summary data for ${venue.name} on ${gameDate}, skipping`);
+          console.log(`  No summary data for ${venue.name} on ${gameDate}, skipping`);
           continue;
         }
 
