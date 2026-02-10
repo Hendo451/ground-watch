@@ -19,6 +19,12 @@ const lightningConfig = {
   red: { label: 'Stop', color: 'text-danger', bg: 'bg-danger/15', icon: Zap, dot: 'bg-danger' },
 } as const;
 
+const forecastLightningConfig = {
+  clear: { label: 'Clear', color: 'text-safe', bg: 'bg-safe/15', icon: ShieldCheck },
+  possible: { label: 'Possible', color: 'text-warning', bg: 'bg-warning/15', icon: Zap },
+  likely: { label: 'Likely', color: 'text-danger', bg: 'bg-danger/15', icon: Zap },
+} as const;
+
 const heatConfig = {
   low: { label: 'Low', color: 'text-safe', bg: 'bg-safe/15', icon: ShieldCheck },
   moderate: { label: 'Moderate', color: 'text-warning', bg: 'bg-warning/15', icon: Thermometer },
@@ -30,6 +36,12 @@ const lightningTooltips = {
   green: ['No strikes detected nearby', 'Normal play permitted'],
   orange: ['Lightning detected 16–30 km away', 'Be prepared to suspend play', 'Monitor conditions closely'],
   red: ['Strike detected within 16 km', '30-min "All Clear" countdown active', 'Suspend play immediately — seek shelter'],
+};
+
+const forecastLightningTooltips = {
+  clear: ['No thunderstorms forecast', 'Normal conditions expected'],
+  possible: ['Thunderstorms possible for this day', 'Monitor conditions closer to game time'],
+  likely: ['Thunderstorms likely for this day', 'Consider contingency plans', 'High chance of play disruption'],
 };
 
 const heatTooltips = {
@@ -46,7 +58,23 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
     new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
   const gameName = game.name || venue.name;
-  const lc = lightningConfig[game.status];
+
+  // Determine if game is currently active (within start-warmup to end)
+  const now = new Date();
+  const gameStart = new Date(new Date(game.start_time).getTime() - game.warmup_minutes * 60000);
+  const gameEnd = new Date(game.end_time);
+  const isActive = now >= gameStart && now <= gameEnd;
+
+  // For active games: use real-time lightning status; for scheduled: use forecast
+  const forecastKey = (game.lightning_forecast || 'clear') as keyof typeof forecastLightningConfig;
+  const lc = isActive
+    ? lightningConfig[game.status]
+    : forecastLightningConfig[forecastKey] || forecastLightningConfig.clear;
+  const lightningTips = isActive
+    ? lightningTooltips[game.status]
+    : forecastLightningTooltips[forecastKey] || forecastLightningTooltips.clear;
+  const lightningLabel = isActive ? 'Lightning' : 'Storm Forecast';
+
   const hc = heatConfig[game.heat_status];
   const LightningIcon = lc.icon;
   const HeatIcon = hc.icon;
@@ -82,12 +110,12 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[240px]">
-                <p className="font-semibold text-xs mb-1">Lightning Risk: {lc.label}</p>
-                {game.last_strike_distance !== null && (
+                <p className="font-semibold text-xs mb-1">{lightningLabel}: {lc.label}</p>
+                {isActive && game.last_strike_distance !== null && (
                   <p className="text-xs text-muted-foreground mb-1">Last strike: {game.last_strike_distance} km away</p>
                 )}
                 <ul className="space-y-0.5">
-                  {lightningTooltips[game.status].map((tip, i) => (
+                  {lightningTips.map((tip, i) => (
                     <li key={i} className="text-xs text-muted-foreground flex gap-1">
                       <span>•</span><span>{tip}</span>
                     </li>

@@ -129,8 +129,8 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Build a map of date → { maxTempC, humidity, icon } from forecast periods
-      const dailyConditions = new Map<string, { tempC: number; humidity: number; icon: string | null }>();
+      // Build a map of date → { maxTempC, humidity, icon, lightningForecast } from forecast periods
+      const dailyConditions = new Map<string, { tempC: number; humidity: number; icon: string | null; lightningForecast: string }>();
       const periods = data.response[0]?.periods ?? [];
       for (const period of periods) {
         const dateKey = period.dateTimeISO?.slice(0, 10);
@@ -138,9 +138,24 @@ Deno.serve(async (req) => {
         const tempC = period.maxTempC ?? period.tempC ?? null;
         const humidity = period.humidity ?? period.maxHumidity ?? null;
         const icon = period.icon ?? null;
-        console.log(`  Forecast ${dateKey}: maxC=${tempC}, humidity=${humidity}, icon=${icon}`);
+        const weatherPrimary = (period.weatherPrimary ?? "").toLowerCase();
+        const pop = period.pop ?? 0;
+
+        // Determine lightning forecast from weather description and icon
+        let lightningForecast = "clear";
+        if (
+          weatherPrimary.includes("thunder") ||
+          weatherPrimary.includes("tstorm") ||
+          (icon && icon.includes("tstorm"))
+        ) {
+          lightningForecast = pop >= 60 ? "likely" : "possible";
+        } else if (pop >= 70 && (weatherPrimary.includes("rain") || weatherPrimary.includes("shower"))) {
+          lightningForecast = "possible";
+        }
+
+        console.log(`  Forecast ${dateKey}: maxC=${tempC}, humidity=${humidity}, icon=${icon}, weather=${weatherPrimary}, pop=${pop}, lightning=${lightningForecast}`);
         if (tempC != null && humidity != null) {
-          dailyConditions.set(dateKey, { tempC, humidity, icon });
+          dailyConditions.set(dateKey, { tempC, humidity, icon, lightningForecast });
         }
       }
 
@@ -163,6 +178,7 @@ Deno.serve(async (req) => {
             heat_status: heatStatus,
             last_heat_check_at: now.toISOString(),
             weather_icon: firstConditions.icon,
+            lightning_forecast: firstConditions.lightningForecast,
           }).eq("id", game.id);
           updated++;
           continue;
@@ -178,6 +194,7 @@ Deno.serve(async (req) => {
           heat_status: heatStatus,
           last_heat_check_at: now.toISOString(),
           weather_icon: conditions.icon,
+          lightning_forecast: conditions.lightningForecast,
         }).eq("id", game.id);
 
         updated++;

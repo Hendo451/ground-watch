@@ -43,6 +43,7 @@ export interface Game {
   last_humidity: number | null;
   last_heat_check_at: string | null;
   weather_icon: string | null;
+  lightning_forecast: string;
   created_at: string;
   updated_at: string;
 }
