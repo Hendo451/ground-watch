@@ -131,6 +131,34 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
           </div>
         </div>
 
+        {/* Conditions row — shows when data is available */}
+        {(game.last_temp_c !== null || game.last_strike_distance !== null) && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-1.5">
+            {game.last_temp_c !== null && (
+              <span className="flex items-center gap-1">
+                <Thermometer className="h-3 w-3" />
+                {game.last_temp_c}°C
+              </span>
+            )}
+            {game.last_humidity !== null && (
+              <span className="flex items-center gap-1">
+                💧 {game.last_humidity}%
+              </span>
+            )}
+            {game.last_strike_distance !== null && (
+              <span className="flex items-center gap-1">
+                <Zap className="h-3 w-3" />
+                {game.last_strike_distance} km
+              </span>
+            )}
+            {game.last_heat_check_at && (
+              <span className="ml-auto text-[10px] text-muted-foreground/60">
+                {new Date(game.last_heat_check_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+        )}
+
         {official && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground border-t border-border pt-2">
             <User className="h-3 w-3" />
