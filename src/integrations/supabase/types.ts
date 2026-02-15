@@ -330,6 +330,33 @@ export type Database = {
           },
         ]
       }
+      settings: {
+        Row: {
+          countdown_duration_minutes: number
+          default_warmup_minutes: number
+          id: string
+          sms_alerts_enabled: boolean
+          upcoming_days_window: number
+          updated_at: string
+        }
+        Insert: {
+          countdown_duration_minutes?: number
+          default_warmup_minutes?: number
+          id?: string
+          sms_alerts_enabled?: boolean
+          upcoming_days_window?: number
+          updated_at?: string
+        }
+        Update: {
+          countdown_duration_minutes?: number
+          default_warmup_minutes?: number
+          id?: string
+          sms_alerts_enabled?: boolean
+          upcoming_days_window?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       training_exceptions: {
         Row: {
           created_at: string
