@@ -1,9 +1,9 @@
-import { useVenues } from '@/hooks/useData';
+import { useVenues, useGames } from '@/hooks/useData';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, MapPin, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import WeatherMap from '@/components/WeatherMap';
 
 // Publishable Xweather client keys for MapsGL (client-side SDK)
@@ -12,8 +12,11 @@ const XWEATHER_CLIENT_ID = 'YOUR_XWEATHER_CLIENT_ID';
 const XWEATHER_CLIENT_SECRET = 'YOUR_XWEATHER_CLIENT_SECRET';
 
 const MapViewPage = () => {
-  const { data: venues = [], isLoading } = useVenues();
+  const { data: venues = [], isLoading: venuesLoading } = useVenues();
+  const { data: games = [], isLoading: gamesLoading } = useGames();
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
+
+  const isLoading = venuesLoading || gamesLoading;
 
   useEffect(() => {
     if (venues.length > 0 && !selectedVenueId) {
@@ -22,6 +25,18 @@ const MapViewPage = () => {
   }, [venues, selectedVenueId]);
 
   const selectedVenue = venues.find(v => v.id === selectedVenueId);
+
+  // Find active game at this venue to get strike data
+  const activeGame = useMemo(() => {
+    if (!selectedVenueId) return null;
+    const now = new Date();
+    return games.find(g => {
+      if (g.venue_id !== selectedVenueId) return false;
+      const start = new Date(g.start_time);
+      const end = new Date(g.end_time);
+      return now >= start && now <= end;
+    }) || null;
+  }, [games, selectedVenueId]);
 
   const missingCredentials = !XWEATHER_CLIENT_ID || !XWEATHER_CLIENT_SECRET;
 
@@ -85,6 +100,8 @@ const MapViewPage = () => {
             longitude={selectedVenue.longitude}
             safetyRadiusKm={selectedVenue.safe_zone_radius}
             groundLabel={selectedVenue.name}
+            lastStrikeDistanceKm={activeGame?.last_strike_distance}
+            lastStrikeAt={activeGame?.last_strike_at}
           />
         ) : (
           <div className="flex items-center justify-center h-full min-h-[400px]">
