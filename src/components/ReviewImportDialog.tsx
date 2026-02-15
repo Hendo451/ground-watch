@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Trash2, Check, Plus, MapPin } from 'lucide-react';
-import { Venue, Official, useAddVenue } from '@/hooks/useData';
+import { Venue, Official, Grade, useAddVenue } from '@/hooks/useData';
 import { ExtractedGame } from './ImportDrawDialog';
 import { LocationSearch } from './LocationSearch';
 
@@ -21,7 +21,8 @@ interface ReviewImportDialogProps {
   extractedGames: ExtractedGame[];
   venues: Venue[];
   officials: Official[];
-  onConfirm: (games: { name: string; venue_id: string; start_time: string; end_time: string }[]) => void;
+  grades: Grade[];
+  onConfirm: (games: { name: string; venue_id: string; start_time: string; end_time: string; grade_id?: string }[]) => void;
   isPending?: boolean;
 }
 
@@ -31,10 +32,12 @@ export const ReviewImportDialog = ({
   extractedGames, 
   venues, 
   officials, 
+  grades,
   onConfirm,
   isPending 
 }: ReviewImportDialogProps) => {
   const [games, setGames] = useState<ReviewGame[]>([]);
+  const [selectedGradeId, setSelectedGradeId] = useState<string>('');
   const [addingVenueForGameId, setAddingVenueForGameId] = useState<string | null>(null);
   const [newVenueName, setNewVenueName] = useState('');
   const [newVenueLat, setNewVenueLat] = useState('');
@@ -93,9 +96,10 @@ export const ReviewImportDialog = ({
         venue_id: g.venueId,
         start_time: new Date(`${g.date}T${g.startTime}:00`).toISOString(),
         end_time: new Date(`${g.date}T${g.endTime}:00`).toISOString(),
+        ...(selectedGradeId ? { grade_id: selectedGradeId } : {}),
       }));
     
-    onConfirm(validGames as { name: string; venue_id: string; start_time: string; end_time: string }[]);
+    onConfirm(validGames as { name: string; venue_id: string; start_time: string; end_time: string; grade_id?: string }[]);
   };
 
   const openAddVenueDialog = (gameId: string, suggestedName: string) => {
@@ -148,6 +152,26 @@ export const ReviewImportDialog = ({
             <DialogTitle>Review Imported Games ({games.length})</DialogTitle>
           </DialogHeader>
           
+          {/* Grade selector */}
+          <div className="flex items-center gap-3 px-1">
+            <Label className="text-sm font-medium whitespace-nowrap">Grade</Label>
+            <Select value={selectedGradeId} onValueChange={setSelectedGradeId}>
+              <SelectTrigger className="h-9 w-48">
+                <SelectValue placeholder="Select grade (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {grades.map(g => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedGradeId && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedGradeId('')}>
+                Clear
+              </Button>
+            )}
+          </div>
+
           {/* Missing Venues Alert */}
           {missingVenues.length > 0 && (
             <div className="bg-warning/20 border-2 border-warning rounded-lg p-4 space-y-3">
