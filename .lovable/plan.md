@@ -1,25 +1,47 @@
 
 
-## Badge Cleanup and Import Pruning
+## Show All Lightning Strikes on Map + Editable Warm-up Period
 
-Two small polish changes to `src/components/ActiveGameCard.tsx`:
+### What This Changes
 
-### 1. Remove redundant emojis from status badges
+Currently the map only shows a single "last strike" dot. This plan will display **every strike** detected during a game's active window (including warm-up) and make the warm-up period editable from the Edit Game dialog.
 
-The lightning and heat badges currently show both a Lucide icon AND an emoji (⚡ and 🌡). Removing the emojis keeps the badges clean and consistent, relying on the existing Lucide icons (`Zap`, `ShieldCheck`, `Thermometer`, etc.).
+### Overview
 
-- Before: `[Zap icon] ⚡ Clear` / `[Thermometer icon] 🌡 Low`
-- After: `[Zap icon] Clear` / `[Thermometer icon] Low`
+1. **Record strikes in the database** -- The `lightning-monitor` backend function will be updated to insert each detected strike into the existing `lightning_strikes` table (currently empty).
 
-### 2. Remove unused imports
+2. **Fetch strike history for the map** -- A new data hook (`useLightningStrikes`) will query all strikes for the selected game and pass them to the map component.
 
-The previous refactor left behind imports that are no longer used: `User`, `Calendar`, and `Button`. These will be pruned.
+3. **Render multiple strikes on the map** -- The `WeatherMap` component will be updated to plot all historical strikes as individual dots (colour-coded by recency) instead of just one.
+
+4. **Make warm-up period editable** -- The Edit Game dialog will gain a "Warm-up (mins)" field so you can adjust `warmup_minutes` after a game is created, which shifts the monitoring window accordingly.
+
+---
 
 ### Technical Details
 
-File: `src/components/ActiveGameCard.tsx`
+**1. Update `lightning-monitor` edge function** (`supabase/functions/lightning-monitor/index.ts`)
+- After detecting strikes from Xweather, insert each flash into `lightning_strikes` with `game_id`, `venue_id`, `latitude`, `longitude`, `distance_km`, `detected_at`, `strike_type`, and `peak_amperage`.
+- Continue updating `last_strike_*` fields on the `games` table as before (for dashboard display).
 
-- Remove `User`, `Calendar` from the lucide-react import line
-- Remove `Button` from the UI imports
-- Remove the `⚡ ` prefix from the lightning badge label (around line 113)
-- Remove the `🌡 ` prefix from the heat badge label (around line 131)
+**2. New hook: `useLightningStrikes`** (`src/hooks/useData.ts`)
+- Query `lightning_strikes` table filtered by `game_id`, ordered by `detected_at` descending.
+- Subscribe to Supabase Realtime on this table so new strikes appear on the map immediately (realtime is already enabled on this table).
+
+**3. Update `MapView.tsx`**
+- Import and call `useLightningStrikes(gameId)`.
+- Pass the full array of strikes to `WeatherMap` as a new `strikes` prop.
+
+**4. Update `WeatherMap.tsx`**
+- Replace the single `strike-point` source with a `FeatureCollection` containing all strikes.
+- Colour-code strikes: recent strikes (under 10 minutes) in bright orange, older strikes in a faded tone.
+- Each strike dot shows a tooltip on click with distance and time.
+- Update the legend to reflect "All strikes" count instead of just "Last strike".
+
+**5. Update `EditGameDialog.tsx`**
+- Add a `warmup_minutes` input field (number, 0-120, default from game data).
+- Include `warmup_minutes` in the `onSave` payload.
+
+**6. Update `useUpdateGame` hook** (`src/hooks/useData.ts`)
+- Allow `warmup_minutes` in the update mutation type so edits are persisted.
+
