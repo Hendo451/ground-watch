@@ -102,6 +102,8 @@ const MapViewPage = () => {
             groundLabel={selectedVenue.name}
             lastStrikeDistanceKm={activeGame?.last_strike_distance}
             lastStrikeAt={activeGame?.last_strike_at}
+            lastStrikeLat={(activeGame as any)?.last_strike_lat}
+            lastStrikeLng={(activeGame as any)?.last_strike_lng}
           />
         ) : (
           <div className="flex items-center justify-center h-full min-h-[400px]">
