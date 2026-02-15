@@ -103,6 +103,12 @@ const Dashboard = () => {
       return start >= startOfWeek && start < endOfWeek && end > now;
     })
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  const activeThisWeek = thisWeekGames.filter(g => {
+    const start = new Date(g.start_time);
+    const end = new Date(g.end_time);
+    return now >= start && now <= end;
+  });
+  const upcomingThisWeek = thisWeekGames.filter(g => new Date(g.start_time) > now);
   const pastGames = games.filter(g => new Date(g.end_time) < now);
 
   const statusCounts = {
@@ -212,15 +218,42 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
+            {/* Active Games */}
+            {activeThisWeek.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  Active Games ({activeThisWeek.length})
+                </h2>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {activeThisWeek.map(game => {
+                    const venue = venues.find(v => v.id === game.venue_id);
+                    const official = officials.find(o => o.venue_id === game.venue_id);
+                    if (!venue) return null;
+                    return (
+                      <ActiveGameCard 
+                        key={game.id} 
+                        game={game} 
+                        venue={venue} 
+                        official={official}
+                        canEdit={isAdmin}
+                        onEdit={setEditingGame}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             {/* Games This Week */}
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
-                Games This Week ({thisWeekGames.length})
+                Games This Week ({upcomingThisWeek.length})
               </h2>
-              {thisWeekGames.length > 0 ? (
+              {upcomingThisWeek.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {thisWeekGames.map(game => {
+                  {upcomingThisWeek.map(game => {
                     const venue = venues.find(v => v.id === game.venue_id);
                     const official = officials.find(o => o.venue_id === game.venue_id);
                     if (!venue) return null;
@@ -238,7 +271,7 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <Card className="bg-card border-border p-6 text-center">
-                  <p className="text-muted-foreground">No games scheduled this week</p>
+                  <p className="text-muted-foreground">No upcoming games this week</p>
                 </Card>
               )}
             </section>
