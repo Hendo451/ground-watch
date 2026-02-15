@@ -7,9 +7,9 @@ import { useState, useEffect } from 'react';
 import WeatherMap from '@/components/WeatherMap';
 
 // Publishable Xweather client keys for MapsGL (client-side SDK)
-// Replace these with your actual Xweather credentials
-const XWEATHER_CLIENT_ID = import.meta.env.VITE_XWEATHER_MAP_CLIENT_ID || '';
-const XWEATHER_CLIENT_SECRET = import.meta.env.VITE_XWEATHER_MAP_CLIENT_SECRET || '';
+// These are safe to include in client code — they are publishable keys
+const XWEATHER_CLIENT_ID = 'YOUR_XWEATHER_CLIENT_ID';
+const XWEATHER_CLIENT_SECRET = 'YOUR_XWEATHER_CLIENT_SECRET';
 
 const MapViewPage = () => {
   const { data: venues = [], isLoading } = useVenues();
