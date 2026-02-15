@@ -93,7 +93,7 @@ function getAlertMessage(
 
   switch (status) {
     case "extreme":
-      return `HEAT STOPPAGE ${venueName}: ${tempC}C ${humidity}%RH. Suspend play now. SMA 2024.`;
+      return `HEAT STOPPAGE ${venueName}: ${tempC}C ${humidity}%RH. Suspension of play should be considered. Stop activities ASAP. SMA 2024.`;
     case "high":
       return `HEAT ALERT ${venueName}: ${tempC}C ${humidity}%RH. 10min rest every 30min. Ice towels.`;
     case "moderate":
