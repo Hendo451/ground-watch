@@ -181,12 +181,6 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
                 💧 {game.last_humidity}%
               </span>
           }
-            {game.last_strike_distance !== null &&
-          <span className="flex items-center gap-1">
-                
-                {game.last_strike_distance} km
-              </span>
-          }
             {game.last_heat_check_at &&
           <span className="ml-auto text-[10px] text-muted-foreground/60">
                 {new Date(game.last_heat_check_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
