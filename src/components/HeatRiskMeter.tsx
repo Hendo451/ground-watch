@@ -75,9 +75,10 @@ const mitigationGuidance: Record<HeatStatus, string[]> = {
     'Consider postponing non-essential activities',
   ],
   extreme: [
-    'SUSPEND PLAY IMMEDIATELY',
-    'Move all participants to cooled environment',
-    'Implement emergency cooling protocols',
+    'Suspension of exercise/play should be considered',
+    'If play has commenced, stop all activities as soon as possible',
+    'Move participants to a cooled environment',
+    'Implement emergency cooling protocols if needed',
     'Monitor for heat illness symptoms',
     'Do not resume until conditions improve',
   ],
