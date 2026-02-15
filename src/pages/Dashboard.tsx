@@ -131,6 +131,11 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link to="/map">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <MapPin className="h-3.5 w-3.5" /> Lightning Map
+              </Button>
+            </Link>
             <Link to="/status">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs">
                 <Shield className="h-3.5 w-3.5" /> Live Status
