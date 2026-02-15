@@ -47,7 +47,7 @@ const Dashboard = () => {
     setShowReviewDialog(true);
   };
 
-  const handleConfirmImport = (games: { name: string; venue_id: string; start_time: string; end_time: string }[]) => {
+  const handleConfirmImport = (games: { name: string; venue_id: string; start_time: string; end_time: string; grade_id?: string }[]) => {
     bulkAddGames.mutate(games, {
       onSuccess: () => {
         setShowReviewDialog(false);
@@ -452,6 +452,7 @@ const Dashboard = () => {
           extractedGames={extractedGames}
           venues={venues}
           officials={officials}
+          grades={grades}
           onConfirm={handleConfirmImport}
           isPending={bulkAddGames.isPending}
         />
