@@ -2,7 +2,7 @@ import { Game, Venue, Official } from '@/hooks/useData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MapPin, Clock, User, Pencil, Thermometer, Calendar, ShieldCheck, AlertTriangle, Flame } from 'lucide-react';
+import { MapPin, Clock, User, Pencil, Thermometer, Calendar, ShieldCheck, AlertTriangle, Flame, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ActiveGameCardProps {
