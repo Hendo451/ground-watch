@@ -241,6 +241,57 @@ export type Database = {
           },
         ]
       }
+      lightning_strikes: {
+        Row: {
+          detected_at: string
+          distance_km: number
+          game_id: string
+          id: string
+          latitude: number
+          longitude: number
+          peak_amperage: number | null
+          strike_type: string | null
+          venue_id: string
+        }
+        Insert: {
+          detected_at?: string
+          distance_km: number
+          game_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          peak_amperage?: number | null
+          strike_type?: string | null
+          venue_id: string
+        }
+        Update: {
+          detected_at?: string
+          distance_km?: number
+          game_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          peak_amperage?: number | null
+          strike_type?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lightning_strikes_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lightning_strikes_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       officials: {
         Row: {
           alerts_enabled: boolean

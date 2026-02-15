@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { LightningStrike } from '@/hooks/useData';
 
 interface WeatherMapProps {
   clientId: string;
@@ -13,6 +14,7 @@ interface WeatherMapProps {
   lastStrikeAt?: string | null;
   lastStrikeLat?: number | null;
   lastStrikeLng?: number | null;
+  strikes?: LightningStrike[];
 }
 
 // Generate GeoJSON circle polygon from center + radius
@@ -46,6 +48,7 @@ const WeatherMap = ({
   lastStrikeAt,
   lastStrikeLat,
   lastStrikeLng,
+  strikes = [],
 }: WeatherMapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -85,7 +88,7 @@ const WeatherMap = ({
         paint: { 'line-color': '#ef4444', 'line-width': 2, 'line-dasharray': [4, 3], 'line-opacity': 0.6 },
       });
 
-      // Last known strike dot (from database)
+      // All strikes source (FeatureCollection)
       map.addSource('strike-point', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] } as any,
@@ -96,7 +99,7 @@ const WeatherMap = ({
         source: 'strike-point',
         paint: {
           'circle-radius': 12,
-          'circle-color': '#f97316',
+          'circle-color': ['case', ['get', 'recent'], '#f97316', '#f9731666'],
           'circle-opacity': 0.25,
           'circle-blur': 0.8,
         },
@@ -107,21 +110,25 @@ const WeatherMap = ({
         source: 'strike-point',
         paint: {
           'circle-radius': 5,
-          'circle-color': '#f97316',
+          'circle-color': ['case', ['get', 'recent'], '#f97316', '#f9731688'],
           'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 2,
+          'circle-stroke-width': 1.5,
           'circle-opacity': 1,
         },
       });
 
-      // Update strike point with initial data
-      if (lastStrikeLat && lastStrikeLng) {
-        (map.getSource('strike-point') as maplibregl.GeoJSONSource)?.setData({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [lastStrikeLng, lastStrikeLat] },
-          properties: {},
-        } as any);
-      }
+      // Click handler for strike tooltips
+      map.on('click', 'strike-point-dot', (e) => {
+        const props = e.features?.[0]?.properties;
+        if (!props) return;
+        const coords = (e.features![0].geometry as any).coordinates.slice();
+        new maplibregl.Popup({ offset: 10 })
+          .setLngLat(coords)
+          .setHTML(`<div style="color:#111;font-size:12px;padding:2px 4px"><strong>${props.distance_km} km</strong><br/>${props.time_ago}</div>`)
+          .addTo(map);
+      });
+      map.on('mouseenter', 'strike-point-dot', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'strike-point-dot', () => { map.getCanvas().style.cursor = ''; });
 
       // Ground marker
       const el = document.createElement('div');
@@ -180,22 +187,35 @@ const WeatherMap = ({
     safeSrc?.setData(createCircleGeoJSON(latitude, longitude, safetyRadiusKm) as any);
   }, [latitude, longitude, safetyRadiusKm]);
 
-  // Update strike point when strike data changes
+  // Update strikes on map when data changes
   useEffect(() => {
     if (!mapRef.current) return;
     const src = mapRef.current.getSource('strike-point') as maplibregl.GeoJSONSource | undefined;
     if (!src) return;
 
-    if (lastStrikeLat && lastStrikeLng) {
-      src.setData({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [lastStrikeLng, lastStrikeLat] },
-        properties: {},
-      } as any);
+    const now = Date.now();
+    const tenMinMs = 10 * 60 * 1000;
+
+    if (strikes.length > 0) {
+      const features = strikes.map(s => {
+        const ageMs = now - new Date(s.detected_at).getTime();
+        const mins = Math.round(ageMs / 60000);
+        const timeAgo = mins < 1 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
+        return {
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: [s.longitude, s.latitude] },
+          properties: {
+            recent: ageMs < tenMinMs,
+            distance_km: s.distance_km.toFixed(1),
+            time_ago: timeAgo,
+          },
+        };
+      });
+      src.setData({ type: 'FeatureCollection', features } as any);
     } else {
       src.setData({ type: 'FeatureCollection', features: [] } as any);
     }
-  }, [lastStrikeLat, lastStrikeLng]);
+  }, [strikes]);
 
   // Format time ago
   const timeAgo = lastStrikeAt ? (() => {
@@ -215,7 +235,15 @@ const WeatherMap = ({
           <div className="w-4 h-0.5 border-t-2 border-dashed border-destructive" />
           <span className="text-muted-foreground">Safety zone ({safetyRadiusKm} km)</span>
         </div>
-        {lastStrikeDistanceKm && lastStrikeDistanceKm > 0 && (
+        {strikes.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-white" />
+            <span className="text-muted-foreground">
+              {strikes.length} strike{strikes.length !== 1 ? 's' : ''}{lastStrikeDistanceKm ? ` (nearest ${lastStrikeDistanceKm.toFixed(1)} km${timeAgo ? `, ${timeAgo}` : ''})` : ''}
+            </span>
+          </div>
+        )}
+        {strikes.length === 0 && lastStrikeDistanceKm && lastStrikeDistanceKm > 0 && (
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-white" />
             <span className="text-muted-foreground">
