@@ -16,7 +16,7 @@ import { TrainingManager } from '@/components/TrainingManager';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame } from 'lucide-react';
+import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame, AlertTriangle } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -129,7 +129,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
-              <Zap className="h-5 w-5 text-primary" />
+              <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h1 className="text-sm font-bold text-foreground tracking-tight">GameGuard</h1>
@@ -161,7 +161,7 @@ const Dashboard = () => {
         {statusCounts.red > 0 && (
           <Card className="bg-danger/10 border-danger/20 p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-danger/20 flex items-center justify-center">
-              <Zap className="h-5 w-5 text-danger" />
+              <AlertTriangle className="h-5 w-5 text-danger" />
             </div>
             <div>
               <p className="text-2xl font-bold text-danger">{statusCounts.red}</p>
@@ -217,7 +217,7 @@ const Dashboard = () => {
             {activeThisWeek.length > 0 && (
               <section>
                 <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-primary" />
+                  <Shield className="h-5 w-5 text-primary" />
                   Active Games ({activeThisWeek.length})
                 </h2>
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
