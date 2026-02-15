@@ -194,7 +194,7 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit, strikes
           </div>
         }
 
-        <div className="flex justify-end">
+        <div className="flex justify-start">
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => setDetailsOpen(true)}>
             <Info className="h-3 w-3" /> Details
           </Button>
