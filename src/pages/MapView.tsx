@@ -1,42 +1,30 @@
 import { useVenues, useGames } from '@/hooks/useData';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, MapPin, Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import WeatherMap from '@/components/WeatherMap';
 
 // Publishable Xweather client keys for MapsGL (client-side SDK)
-// These are safe to include in client code — they are publishable keys
 const XWEATHER_CLIENT_ID = 'YOUR_XWEATHER_CLIENT_ID';
 const XWEATHER_CLIENT_SECRET = 'YOUR_XWEATHER_CLIENT_SECRET';
 
 const MapViewPage = () => {
+  const [searchParams] = useSearchParams();
+  const venueId = searchParams.get('venue');
+  const gameId = searchParams.get('game');
+
   const { data: venues = [], isLoading: venuesLoading } = useVenues();
   const { data: games = [], isLoading: gamesLoading } = useGames();
-  const [selectedVenueId, setSelectedVenueId] = useState<string>('');
 
   const isLoading = venuesLoading || gamesLoading;
 
-  useEffect(() => {
-    if (venues.length > 0 && !selectedVenueId) {
-      setSelectedVenueId(venues[0].id);
-    }
-  }, [venues, selectedVenueId]);
+  const selectedVenue = venues.find(v => v.id === venueId);
 
-  const selectedVenue = venues.find(v => v.id === selectedVenueId);
-
-  // Find active game at this venue to get strike data
   const activeGame = useMemo(() => {
-    if (!selectedVenueId) return null;
-    const now = new Date();
-    return games.find(g => {
-      if (g.venue_id !== selectedVenueId) return false;
-      const start = new Date(g.start_time);
-      const end = new Date(g.end_time);
-      return now >= start && now <= end;
-    }) || null;
-  }, [games, selectedVenueId]);
+    if (!gameId) return null;
+    return games.find(g => g.id === gameId) || null;
+  }, [games, gameId]);
 
   const missingCredentials = !XWEATHER_CLIENT_ID || !XWEATHER_CLIENT_SECRET;
 
@@ -51,31 +39,18 @@ const MapViewPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-20">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="gap-1.5">
-                <ArrowLeft className="h-4 w-4" /> Dashboard
-              </Button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" />
-              <h1 className="text-sm font-bold text-foreground">Lightning Map</h1>
-            </div>
+        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
+          <Link to="/">
+            <Button variant="ghost" size="sm" className="gap-1.5">
+              <ArrowLeft className="h-4 w-4" /> Dashboard
+            </Button>
+          </Link>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" />
+            <h1 className="text-sm font-bold text-foreground">
+              Lightning Map{selectedVenue ? ` — ${selectedVenue.name}` : ''}
+            </h1>
           </div>
-
-          {venues.length > 1 && (
-            <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
-              <SelectTrigger className="w-48 h-9">
-                <SelectValue placeholder="Select venue" />
-              </SelectTrigger>
-              <SelectContent>
-                {venues.map(v => (
-                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </header>
 
@@ -107,7 +82,12 @@ const MapViewPage = () => {
           />
         ) : (
           <div className="flex items-center justify-center h-full min-h-[400px]">
-            <p className="text-muted-foreground">No venues configured</p>
+            <div className="text-center space-y-2">
+              <p className="text-muted-foreground">No venue selected</p>
+              <Link to="/">
+                <Button variant="outline" size="sm">Back to Dashboard</Button>
+              </Link>
+            </div>
           </div>
         )}
       </main>
