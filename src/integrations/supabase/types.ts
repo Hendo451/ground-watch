@@ -26,6 +26,8 @@ export type Database = {
           last_humidity: number | null
           last_strike_at: string | null
           last_strike_distance: number | null
+          last_strike_lat: number | null
+          last_strike_lng: number | null
           last_temp_c: number | null
           lightning_forecast: string
           name: string | null
@@ -47,6 +49,8 @@ export type Database = {
           last_humidity?: number | null
           last_strike_at?: string | null
           last_strike_distance?: number | null
+          last_strike_lat?: number | null
+          last_strike_lng?: number | null
           last_temp_c?: number | null
           lightning_forecast?: string
           name?: string | null
@@ -68,6 +72,8 @@ export type Database = {
           last_humidity?: number | null
           last_strike_at?: string | null
           last_strike_distance?: number | null
+          last_strike_lat?: number | null
+          last_strike_lng?: number | null
           last_temp_c?: number | null
           lightning_forecast?: string
           name?: string | null

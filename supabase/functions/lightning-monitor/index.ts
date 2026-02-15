@@ -180,13 +180,15 @@ Deno.serve(async (req) => {
 
       // Update game status if changed
       if (newStatus !== game.status || countdownEnd !== game.countdown_end) {
-        await supabase
+          await supabase
           .from("games")
           .update({
             status: newStatus,
             countdown_end: countdownEnd,
             last_strike_distance: distanceKm,
             last_strike_at: closestStrike.ob.dateTimeISO,
+            last_strike_lat: closestStrike.loc.lat,
+            last_strike_lng: closestStrike.loc.long,
           })
           .eq("id", game.id);
       }

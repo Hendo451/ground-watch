@@ -11,6 +11,8 @@ interface WeatherMapProps {
   groundLabel?: string;
   lastStrikeDistanceKm?: number | null;
   lastStrikeAt?: string | null;
+  lastStrikeLat?: number | null;
+  lastStrikeLng?: number | null;
 }
 
 // Generate GeoJSON circle polygon from center + radius
@@ -42,6 +44,8 @@ const WeatherMap = ({
   groundLabel = 'Sports Ground',
   lastStrikeDistanceKm,
   lastStrikeAt,
+  lastStrikeLat,
+  lastStrikeLng,
 }: WeatherMapProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -81,23 +85,42 @@ const WeatherMap = ({
         paint: { 'line-color': '#ef4444', 'line-width': 2, 'line-dasharray': [4, 3], 'line-opacity': 0.6 },
       });
 
-      // Last known strike ring (from database)
-      map.addSource('strike-radius', {
+      // Last known strike dot (from database)
+      map.addSource('strike-point', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] } as any,
       });
       map.addLayer({
-        id: 'strike-radius-line',
-        type: 'line',
-        source: 'strike-radius',
-        paint: { 'line-color': '#f97316', 'line-width': 2.5, 'line-opacity': 0.8 },
+        id: 'strike-point-glow',
+        type: 'circle',
+        source: 'strike-point',
+        paint: {
+          'circle-radius': 12,
+          'circle-color': '#f97316',
+          'circle-opacity': 0.25,
+          'circle-blur': 0.8,
+        },
+      });
+      map.addLayer({
+        id: 'strike-point-dot',
+        type: 'circle',
+        source: 'strike-point',
+        paint: {
+          'circle-radius': 5,
+          'circle-color': '#f97316',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2,
+          'circle-opacity': 1,
+        },
       });
 
-      // Update strike ring with initial data
-      if (lastStrikeDistanceKm && lastStrikeDistanceKm > 0) {
-        (map.getSource('strike-radius') as maplibregl.GeoJSONSource)?.setData(
-          createCircleGeoJSON(latitude, longitude, lastStrikeDistanceKm) as any
-        );
+      // Update strike point with initial data
+      if (lastStrikeLat && lastStrikeLng) {
+        (map.getSource('strike-point') as maplibregl.GeoJSONSource)?.setData({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [lastStrikeLng, lastStrikeLat] },
+          properties: {},
+        } as any);
       }
 
       // Ground marker
@@ -135,7 +158,7 @@ const WeatherMap = ({
         console.error('Failed to initialize MapsGL:', err);
       }
     });
-  }, [clientId, clientSecret, latitude, longitude, safetyRadiusKm, groundLabel, lastStrikeDistanceKm]);
+  }, [clientId, clientSecret, latitude, longitude, safetyRadiusKm, groundLabel, lastStrikeLat, lastStrikeLng]);
 
   useEffect(() => {
     initMap();
@@ -157,18 +180,22 @@ const WeatherMap = ({
     safeSrc?.setData(createCircleGeoJSON(latitude, longitude, safetyRadiusKm) as any);
   }, [latitude, longitude, safetyRadiusKm]);
 
-  // Update strike ring when strike data changes
+  // Update strike point when strike data changes
   useEffect(() => {
     if (!mapRef.current) return;
-    const src = mapRef.current.getSource('strike-radius') as maplibregl.GeoJSONSource | undefined;
+    const src = mapRef.current.getSource('strike-point') as maplibregl.GeoJSONSource | undefined;
     if (!src) return;
 
-    if (lastStrikeDistanceKm && lastStrikeDistanceKm > 0) {
-      src.setData(createCircleGeoJSON(latitude, longitude, lastStrikeDistanceKm) as any);
+    if (lastStrikeLat && lastStrikeLng) {
+      src.setData({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lastStrikeLng, lastStrikeLat] },
+        properties: {},
+      } as any);
     } else {
       src.setData({ type: 'FeatureCollection', features: [] } as any);
     }
-  }, [lastStrikeDistanceKm, latitude, longitude]);
+  }, [lastStrikeLat, lastStrikeLng]);
 
   // Format time ago
   const timeAgo = lastStrikeAt ? (() => {
@@ -190,7 +217,7 @@ const WeatherMap = ({
         </div>
         {lastStrikeDistanceKm && lastStrikeDistanceKm > 0 && (
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 bg-orange-500 rounded" />
+            <div className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-white" />
             <span className="text-muted-foreground">
               Last strike ({lastStrikeDistanceKm.toFixed(1)} km{timeAgo ? `, ${timeAgo}` : ''})
             </span>
