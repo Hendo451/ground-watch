@@ -411,17 +411,14 @@ const Dashboard = () => {
               )}
             </section>
 
-            {/* Grades and Trainings */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <GradeManager isAdmin={isAdmin} />
-              <TrainingManager 
-                trainings={trainings} 
-                exceptions={trainingExceptions} 
-                venues={venues} 
-                grades={grades} 
-                isAdmin={isAdmin} 
-              />
-            </div>
+            {/* Trainings */}
+            <TrainingManager 
+              trainings={trainings} 
+              exceptions={trainingExceptions} 
+              venues={venues} 
+              grades={grades} 
+              isAdmin={isAdmin} 
+            />
 
             {/* Venues Table */}
             <section>
