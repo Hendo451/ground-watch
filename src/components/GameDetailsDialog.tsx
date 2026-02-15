@@ -117,7 +117,7 @@ export const GameDetailsDialog = ({ open, onOpenChange, game, venue, isActive, s
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl p-0">
         <SheetHeader className="px-5 pt-5 pb-3">
-          <SheetTitle className="text-base">{game.name || venue.name} — Details</SheetTitle>
+          <SheetTitle className="text-base">{game.name || venue.name}</SheetTitle>
           <p className="text-xs text-muted-foreground">{venue.name}</p>
           <SheetDescription className="sr-only">Game details including venue map, heat risk, and thresholds</SheetDescription>
         </SheetHeader>
