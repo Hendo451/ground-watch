@@ -1,68 +1,82 @@
-## Settings Page — Cog Icon in Header
 
-### What This Adds
 
-A new Settings page accessible via a cog icon in the top-right header, providing admin-level customisation for the monitoring experience.
+## Sport Selection for Venues and Games
 
-### Settings Sections
+### What Changes
 
-**1. Default Warm-up Period**
+Instead of users selecting abstract "Category 1/2/3" when adding a venue, they pick the **actual sport** (e.g. AFL, Cricket, Soccer). The app maps that sport to the correct SMA heat category behind the scenes.
 
-- Slider or number input (0-120 mins) for the default warm-up time applied to new games
-- Currently hardcoded to 45 minutes in multiple places — this will be stored in a new `settings` table and read globally
+When scheduling a game, the sport defaults to whatever the venue was set up with, but can be changed — and that override determines the heat risk thresholds for that specific game.
 
-**2. Notification Preferences**
-
-- Toggle SMS alerts on/off globally
-- This complements the per-official `alerts_enabled` flag
-
-**3. Venue & Officials Management**
-
-- Quick links to manage venues and officials (currently only accessible via Add dialogs)
-
-### Bug Fix: Warm-up Activating Games
-
-The dashboard filter for active games will be updated to account for `warmup_minutes`:
+### User Flow
 
 ```text
-Current:  now >= start_time && now <= end_time
-Fixed:    now >= (start_time - warmup_minutes) && now <= end_time
+Add Venue:
+  User picks "AFL" from a sport dropdown
+  --> App stores "AFL" as default_sport
+  --> App maps AFL to Category 1 and stores sport_intensity = category_1
+
+Schedule Game at that venue:
+  Sport auto-fills to "AFL" (from the venue)
+  User can change to "Cricket (fielding)" if needed
+  --> App maps the selected sport to Category 3
+  --> Game record stores sport_intensity = category_3
 ```
 
-This makes the warm-up period functionally shift games from "Upcoming" to "Active" earlier.
+### Sport-to-Category Mapping (SMA 2024)
+
+| Category 1 (Extreme) | Category 2 (High) | Category 3 (Moderate) |
+|---|---|---|
+| AFL | Basketball | Cricket (fielding) |
+| Soccer | Netball | Baseball |
+| Rugby League | Tennis | Golf |
+| Rugby Union | Cricket (batting) | Lawn Bowls |
+| Long-distance running | Hockey | Sailing |
+| Touch Football | Volleyball | Archery |
 
 ---
 
 ### Technical Details
 
-**1. New `settings` table (database migration)**
+**1. Database migration**
 
-- Single-row table storing org-wide preferences
-- Columns: `id` (uuid, PK), `default_warmup_minutes` (integer, default 45), `upcoming_days_window` (integer, default 7), `countdown_duration_minutes` (integer, default 30), `sms_alerts_enabled` (boolean, default true), `updated_at` (timestamptz)
-- RLS: anyone can read, admins can update
-- Seeded with one default row
+- Add `default_sport` (text, nullable) column to `venues` table — stores the display sport name (e.g. "AFL")
+- Add `sport_intensity` (sport_intensity enum, default category_1) column to `games` table — per-game override
+- Backfill: set `games.sport_intensity` from the joined venue's `sport_intensity` for all existing games
 
-**2. New Settings page** (`src/pages/Settings.tsx`)
+**2. Shared sport mapping constant** (`src/lib/sportCategories.ts`)
 
-- Clean form layout with sections matching the list above
-- Uses existing UI components (Input, Slider, Switch, Card)
-- Only editable by admins; viewers see current values as read-only
+- A single source-of-truth array mapping sport names to categories:
+  ```
+  { sport: "AFL", category: "category_1" }
+  { sport: "Cricket (fielding)", category: "category_3" }
+  ...
+  ```
+- Helper functions: `getCategoryForSport(sport)` and `getSportsForCategory(category)`
 
-**3. New hooks** (`src/hooks/useData.ts`)
+**3. AddVenueDialog changes**
 
-- `useSettings()` — fetches the single settings row
-- `useUpdateSettings()` — mutation to update settings
+- Replace the "Sport Intensity Category" dropdown with a "Default Sport" dropdown listing all sports
+- When a sport is selected, auto-set `sport_intensity` from the mapping
+- Show the derived category as a small label (e.g. "Category 1 - Extreme exertion")
 
-**4. Dashboard header update** (`src/pages/Dashboard.tsx`)
+**4. AddGameDialog changes**
 
-- Add a `Settings` (cog) icon button in the top-right header between "Live Status" and "Sign Out"
-- Links to `/settings`
+- Add a "Sport" dropdown that defaults to the selected venue's `default_sport`
+- When venue changes, auto-update the sport to the venue's default
+- User can override the sport, which recalculates the category
+- Pass `sport_intensity` into the game creation payload
 
-**5. Route registration** (`src/App.tsx`)
+**5. Game data hooks** (`useData.ts`)
 
-- Add `<Route path="/settings" element={<Settings />} />`
+- Update `useAddGame` mutation to include `sport_intensity`
+- Update `Game` interface to include `sport_intensity`
 
-**75 Edge function updates** (future consideration)
+**6. Heat monitor edge function update** (`heat-monitor/index.ts`)
 
-- Once settings are stored, the `lightning-monitor` and `heat-monitor` functions can read `countdown_duration_minutes` from the settings table instead of using hardcoded values
-- This can be done as a follow-up to keep this change focused
+- Read `sport_intensity` from the **game** record instead of the venue
+- Fall back to venue's `sport_intensity` if the game field is null (backward compatibility)
+
+**7. Weather forecast edge function update** (`weather-forecast/index.ts`)
+
+- Same change: use game-level `sport_intensity` with venue fallback
