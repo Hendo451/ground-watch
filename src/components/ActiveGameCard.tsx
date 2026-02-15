@@ -107,7 +107,7 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
               <TooltipTrigger asChild>
                 <div className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold cursor-default', lc.bg, lc.color)}>
                   <LightningIcon className="h-3 w-3" />
-                  <span>⚡ {lc.label}</span>
+                  <span>⚡ {lc.label}{isActive && game.last_strike_distance !== null ? ` · ${game.last_strike_distance} km` : ''}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[240px]">
@@ -181,10 +181,10 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
                 💧 {game.last_humidity}%
               </span>
             )}
-            {game.last_strike_distance !== null && (
+            {game.last_strike_distance !== null && game.last_strike_at && (
               <span className="flex items-center gap-1">
                 <Zap className="h-3 w-3" />
-                {game.last_strike_distance} km
+                {new Date(game.last_strike_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
             {game.last_heat_check_at && (
