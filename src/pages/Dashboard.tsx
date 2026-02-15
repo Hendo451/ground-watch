@@ -99,7 +99,8 @@ const Dashboard = () => {
   const thisWeekGames = games
     .filter(g => {
       const start = new Date(g.start_time);
-      return start >= startOfWeek && start < endOfWeek;
+      const end = new Date(g.end_time);
+      return start >= startOfWeek && start < endOfWeek && end > now;
     })
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   const pastGames = games.filter(g => new Date(g.end_time) < now);
