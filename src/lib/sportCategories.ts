@@ -43,3 +43,51 @@ export function getCategoryForSport(sport: string): SportIntensity {
 export function getSportsForCategory(category: SportIntensity): string[] {
   return SPORT_CATEGORIES.filter(s => s.category === category).map(s => s.sport);
 }
+
+export function getSportNameForIntensity(intensity: SportIntensity): string | null {
+  const mapping = SPORT_CATEGORIES.find(s => s.category === intensity);
+  return mapping?.sport ?? null;
+}
+
+/** Category offset applied to base thresholds (Cat 1 = 0, Cat 2 = +1.5, Cat 3 = +3) */
+export function getCategoryOffset(intensity: SportIntensity): number {
+  if (intensity === 'category_3') return 3;
+  if (intensity === 'category_2') return 1.5;
+  return 0;
+}
+
+export interface HeatThreshold {
+  level: 'moderate' | 'high' | 'extreme';
+  label: string;
+  conditions: string[];
+}
+
+export function getThresholdsForCategory(intensity: SportIntensity): HeatThreshold[] {
+  const o = getCategoryOffset(intensity);
+  return [
+    {
+      level: 'moderate',
+      label: 'Moderate',
+      conditions: [
+        `>${(26 + o).toFixed(1)}°C at ≥60% RH`,
+        `>${(30 + o).toFixed(1)}°C at ≥30% RH`,
+      ],
+    },
+    {
+      level: 'high',
+      label: 'High',
+      conditions: [
+        `>${(30 + o).toFixed(1)}°C at ≥50% RH`,
+        `>${(35 + o).toFixed(1)}°C at ≥20% RH`,
+      ],
+    },
+    {
+      level: 'extreme',
+      label: 'Extreme',
+      conditions: [
+        `>${(35 + o).toFixed(1)}°C at ≥40% RH`,
+        `>${(38 + o).toFixed(1)}°C at any RH`,
+      ],
+    },
+  ];
+}
