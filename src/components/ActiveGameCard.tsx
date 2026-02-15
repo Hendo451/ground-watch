@@ -2,7 +2,7 @@ import { Game, Venue, Official } from '@/hooks/useData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MapPin, Clock, User, Pencil, Thermometer, Calendar, ShieldCheck, AlertTriangle, Flame, Zap, Map } from 'lucide-react';
+import { MapPin, Clock, Pencil, Thermometer, ShieldCheck, AlertTriangle, Flame, Zap, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -107,7 +107,7 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
               <TooltipTrigger asChild>
                 <div className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold cursor-default', lc.bg, lc.color)}>
                   <LightningIcon className="h-3 w-3" />
-                  <span>⚡ {lc.label}</span>
+                  <span>{lc.label}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[240px]">
@@ -129,7 +129,7 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
               <TooltipTrigger asChild>
                 <div className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold cursor-default', hc.bg, hc.color)}>
                   <HeatIcon className="h-3 w-3" />
-                  <span>🌡 {hc.label}</span>
+                  <span>{hc.label}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[240px]">
