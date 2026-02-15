@@ -2,8 +2,9 @@ import { Game, Venue, Official } from '@/hooks/useData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MapPin, Clock, Zap, User, Pencil, Thermometer, Calendar, ShieldCheck, AlertTriangle, Flame } from 'lucide-react';
+import { MapPin, Clock, Zap, User, Pencil, Thermometer, Calendar, ShieldCheck, AlertTriangle, Flame, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 interface ActiveGameCardProps {
   game: Game;
@@ -205,6 +206,15 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
           <div className="rounded-md bg-danger/10 border border-danger/20 px-3 py-2 text-xs text-danger font-medium">
             🔒 Game stopped — 30-min restart countdown active
           </div>
+        )}
+
+        {isActive && (
+          <Link to={`/map?venue=${venue.id}&game=${game.id}`}>
+            <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs">
+              <Map className="h-3.5 w-3.5" />
+              Lightning Map
+            </Button>
+          </Link>
         )}
       </Card>
     </TooltipProvider>
