@@ -25,9 +25,15 @@ function calculateHeatStatus(
 }
 
 interface ForecastPeriod {
+  timestamp: number;
   dateTimeISO: string;
-  tempC: number;
-  humidity: number;
+  tempC: number | null;
+  maxTempC: number | null;
+  humidity: number | null;
+  maxHumidity: number | null;
+  icon: string | null;
+  weatherPrimary: string | null;
+  pop: number | null;
 }
 
 interface XweatherForecastResponse {
@@ -36,6 +42,44 @@ interface XweatherForecastResponse {
   response?: Array<{
     periods: ForecastPeriod[];
   }>;
+}
+
+/** Find the forecast period closest to the given game start time */
+function findClosestPeriod(periods: ForecastPeriod[], gameStartISO: string): ForecastPeriod | null {
+  if (periods.length === 0) return null;
+  const gameTs = new Date(gameStartISO).getTime();
+  let closest = periods[0];
+  let minDiff = Math.abs(new Date(closest.dateTimeISO).getTime() - gameTs);
+
+  for (let i = 1; i < periods.length; i++) {
+    const diff = Math.abs(new Date(periods[i].dateTimeISO).getTime() - gameTs);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = periods[i];
+    }
+  }
+  return closest;
+}
+
+function extractConditions(period: ForecastPeriod) {
+  const tempC = period.tempC ?? period.maxTempC ?? null;
+  const humidity = period.humidity ?? period.maxHumidity ?? null;
+  const icon = period.icon ?? null;
+  const weatherPrimary = (period.weatherPrimary ?? "").toLowerCase();
+  const pop = period.pop ?? 0;
+
+  let lightningForecast = "clear";
+  if (
+    weatherPrimary.includes("thunder") ||
+    weatherPrimary.includes("tstorm") ||
+    (icon && icon.includes("tstorm"))
+  ) {
+    lightningForecast = pop >= 60 ? "likely" : "possible";
+  } else if (pop >= 70 && (weatherPrimary.includes("rain") || weatherPrimary.includes("shower"))) {
+    lightningForecast = "possible";
+  }
+
+  return { tempC, humidity, icon, lightningForecast };
 }
 
 Deno.serve(async (req) => {
@@ -49,7 +93,6 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    console.log(`Xweather credentials: ID starts with "${XWEATHER_CLIENT_ID?.slice(0, 5)}...", Secret starts with "${XWEATHER_CLIENT_SECRET?.slice(0, 5)}..."`);
     if (!XWEATHER_CLIENT_ID || !XWEATHER_CLIENT_SECRET) {
       throw new Error("Xweather credentials not configured");
     }
@@ -107,90 +150,45 @@ Deno.serve(async (req) => {
     let updated = 0;
 
     for (const [, { venue, games: venueGames }] of venueMap) {
-      // Use forecasts endpoint with format=json&filter=day
-      const forecastUrl = `https://data.api.xweather.com/forecasts/${venue.latitude},${venue.longitude}?format=json&filter=day&limit=7&client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
+      // Use 3-hourly forecast periods to match game start times accurately
+      // limit=56 gives 7 days of 3hr periods (8 periods/day × 7 days)
+      const forecastUrl = `https://data.api.xweather.com/forecasts/${venue.latitude},${venue.longitude}?format=json&filter=3hr&limit=56&client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
 
-      console.log(`Fetching forecast for ${venue.name}`);
+      console.log(`Fetching 3hr forecast for ${venue.name}`);
 
       const res = await fetch(forecastUrl);
-      const data = await res.json();
-
-      console.log(`Raw response keys for ${venue.name}:`, JSON.stringify(Object.keys(data)));
-      if (data.response?.[0]) {
-        console.log(`Response[0] keys:`, JSON.stringify(Object.keys(data.response[0])));
-        if (data.response[0].periods?.[0]) {
-          console.log(`First period keys:`, JSON.stringify(Object.keys(data.response[0].periods[0])));
-          console.log(`First period sample:`, JSON.stringify(data.response[0].periods[0]).slice(0, 500));
-        }
-      }
+      const data: XweatherForecastResponse = await res.json();
 
       if (!data.success || !data.response || data.response.length === 0) {
         console.error(`Failed to get forecast for ${venue.name}:`, JSON.stringify(data.error));
         continue;
       }
 
-      // Build a map of date → { maxTempC, humidity, icon, lightningForecast } from forecast periods
-      const dailyConditions = new Map<string, { tempC: number; humidity: number; icon: string | null; lightningForecast: string }>();
       const periods = data.response[0]?.periods ?? [];
-      for (const period of periods) {
-        const dateKey = period.dateTimeISO?.slice(0, 10);
-        if (!dateKey) continue;
-        const tempC = period.maxTempC ?? period.tempC ?? null;
-        const humidity = period.humidity ?? period.maxHumidity ?? null;
-        const icon = period.icon ?? null;
-        const weatherPrimary = (period.weatherPrimary ?? "").toLowerCase();
-        const pop = period.pop ?? 0;
+      console.log(`Got ${periods.length} 3hr periods for ${venue.name}`);
 
-        // Determine lightning forecast from weather description and icon
-        let lightningForecast = "clear";
-        if (
-          weatherPrimary.includes("thunder") ||
-          weatherPrimary.includes("tstorm") ||
-          (icon && icon.includes("tstorm"))
-        ) {
-          lightningForecast = pop >= 60 ? "likely" : "possible";
-        } else if (pop >= 70 && (weatherPrimary.includes("rain") || weatherPrimary.includes("shower"))) {
-          lightningForecast = "possible";
-        }
-
-        console.log(`  Forecast ${dateKey}: maxC=${tempC}, humidity=${humidity}, icon=${icon}, weather=${weatherPrimary}, pop=${pop}, lightning=${lightningForecast}`);
-        if (tempC != null && humidity != null) {
-          dailyConditions.set(dateKey, { tempC, humidity, icon, lightningForecast });
-        }
-      }
-
-      console.log(`Got ${dailyConditions.size} daily forecasts for ${venue.name}`);
-
-      // Match each game to its day's forecast
+      // Match each game to the closest 3hr forecast period
       for (const game of venueGames) {
-        const gameDate = game.start_time.slice(0, 10);
-        const conditions = dailyConditions.get(gameDate);
+        const closestPeriod = findClosestPeriod(periods, game.start_time);
 
-        if (!conditions) {
-          console.log(`  No forecast for ${venue.name} on ${gameDate}, using closest available`);
-          // Fall back to first available forecast
-          const firstConditions = dailyConditions.values().next().value;
-          if (!firstConditions) continue;
-          const heatStatus = calculateHeatStatus(firstConditions.tempC, firstConditions.humidity, venue.sport_intensity);
-          await supabase.from("games").update({
-            last_temp_c: firstConditions.tempC,
-            last_humidity: firstConditions.humidity,
-            heat_status: heatStatus,
-            last_heat_check_at: now.toISOString(),
-            weather_icon: firstConditions.icon,
-            lightning_forecast: firstConditions.lightningForecast,
-          }).eq("id", game.id);
-          updated++;
+        if (!closestPeriod) {
+          console.log(`  No forecast period found for game ${game.id}`);
           continue;
         }
 
-        const { tempC, humidity } = conditions;
-        const heatStatus = calculateHeatStatus(tempC, humidity, venue.sport_intensity);
-        console.log(`  Game ${game.id} on ${gameDate}: ${tempC}°C / ${humidity}% → ${heatStatus}`);
+        const conditions = extractConditions(closestPeriod);
+
+        if (conditions.tempC == null || conditions.humidity == null) {
+          console.log(`  Incomplete forecast data for game ${game.id}`);
+          continue;
+        }
+
+        const heatStatus = calculateHeatStatus(conditions.tempC, conditions.humidity, venue.sport_intensity);
+        console.log(`  Game ${game.id} start=${game.start_time} matched period=${closestPeriod.dateTimeISO}: ${conditions.tempC}°C / ${conditions.humidity}% → ${heatStatus}`);
 
         await supabase.from("games").update({
-          last_temp_c: tempC,
-          last_humidity: humidity,
+          last_temp_c: conditions.tempC,
+          last_humidity: conditions.humidity,
           heat_status: heatStatus,
           last_heat_check_at: now.toISOString(),
           weather_icon: conditions.icon,

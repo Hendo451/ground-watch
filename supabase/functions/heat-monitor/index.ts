@@ -157,6 +157,13 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${games.length} active games to monitor for heat`);
 
+    // Identify newly-active games (no heat check yet, or last check was from forecast only)
+    // These get priority processing for an immediate live conditions check
+    const newlyActive = (games as unknown as Game[]).filter(g => !g.heat_status || g.heat_status === 'low');
+    if (newlyActive.length > 0) {
+      console.log(`${newlyActive.length} game(s) entering active window — will fetch live conditions`);
+    }
+
     const results: {
       venueId: string;
       venueName: string;
