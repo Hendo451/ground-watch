@@ -1,47 +1,68 @@
+## Settings Page — Cog Icon in Header
 
+### What This Adds
 
-## Show All Lightning Strikes on Map + Editable Warm-up Period
+A new Settings page accessible via a cog icon in the top-right header, providing admin-level customisation for the monitoring experience.
 
-### What This Changes
+### Settings Sections
 
-Currently the map only shows a single "last strike" dot. This plan will display **every strike** detected during a game's active window (including warm-up) and make the warm-up period editable from the Edit Game dialog.
+**1. Default Warm-up Period**
 
-### Overview
+- Slider or number input (0-120 mins) for the default warm-up time applied to new games
+- Currently hardcoded to 45 minutes in multiple places — this will be stored in a new `settings` table and read globally
 
-1. **Record strikes in the database** -- The `lightning-monitor` backend function will be updated to insert each detected strike into the existing `lightning_strikes` table (currently empty).
+**2. Notification Preferences**
 
-2. **Fetch strike history for the map** -- A new data hook (`useLightningStrikes`) will query all strikes for the selected game and pass them to the map component.
+- Toggle SMS alerts on/off globally
+- This complements the per-official `alerts_enabled` flag
 
-3. **Render multiple strikes on the map** -- The `WeatherMap` component will be updated to plot all historical strikes as individual dots (colour-coded by recency) instead of just one.
+**3. Venue & Officials Management**
 
-4. **Make warm-up period editable** -- The Edit Game dialog will gain a "Warm-up (mins)" field so you can adjust `warmup_minutes` after a game is created, which shifts the monitoring window accordingly.
+- Quick links to manage venues and officials (currently only accessible via Add dialogs)
+
+### Bug Fix: Warm-up Activating Games
+
+The dashboard filter for active games will be updated to account for `warmup_minutes`:
+
+```text
+Current:  now >= start_time && now <= end_time
+Fixed:    now >= (start_time - warmup_minutes) && now <= end_time
+```
+
+This makes the warm-up period functionally shift games from "Upcoming" to "Active" earlier.
 
 ---
 
 ### Technical Details
 
-**1. Update `lightning-monitor` edge function** (`supabase/functions/lightning-monitor/index.ts`)
-- After detecting strikes from Xweather, insert each flash into `lightning_strikes` with `game_id`, `venue_id`, `latitude`, `longitude`, `distance_km`, `detected_at`, `strike_type`, and `peak_amperage`.
-- Continue updating `last_strike_*` fields on the `games` table as before (for dashboard display).
+**1. New `settings` table (database migration)**
 
-**2. New hook: `useLightningStrikes`** (`src/hooks/useData.ts`)
-- Query `lightning_strikes` table filtered by `game_id`, ordered by `detected_at` descending.
-- Subscribe to Supabase Realtime on this table so new strikes appear on the map immediately (realtime is already enabled on this table).
+- Single-row table storing org-wide preferences
+- Columns: `id` (uuid, PK), `default_warmup_minutes` (integer, default 45), `upcoming_days_window` (integer, default 7), `countdown_duration_minutes` (integer, default 30), `sms_alerts_enabled` (boolean, default true), `updated_at` (timestamptz)
+- RLS: anyone can read, admins can update
+- Seeded with one default row
 
-**3. Update `MapView.tsx`**
-- Import and call `useLightningStrikes(gameId)`.
-- Pass the full array of strikes to `WeatherMap` as a new `strikes` prop.
+**2. New Settings page** (`src/pages/Settings.tsx`)
 
-**4. Update `WeatherMap.tsx`**
-- Replace the single `strike-point` source with a `FeatureCollection` containing all strikes.
-- Colour-code strikes: recent strikes (under 10 minutes) in bright orange, older strikes in a faded tone.
-- Each strike dot shows a tooltip on click with distance and time.
-- Update the legend to reflect "All strikes" count instead of just "Last strike".
+- Clean form layout with sections matching the list above
+- Uses existing UI components (Input, Slider, Switch, Card)
+- Only editable by admins; viewers see current values as read-only
 
-**5. Update `EditGameDialog.tsx`**
-- Add a `warmup_minutes` input field (number, 0-120, default from game data).
-- Include `warmup_minutes` in the `onSave` payload.
+**3. New hooks** (`src/hooks/useData.ts`)
 
-**6. Update `useUpdateGame` hook** (`src/hooks/useData.ts`)
-- Allow `warmup_minutes` in the update mutation type so edits are persisted.
+- `useSettings()` — fetches the single settings row
+- `useUpdateSettings()` — mutation to update settings
 
+**4. Dashboard header update** (`src/pages/Dashboard.tsx`)
+
+- Add a `Settings` (cog) icon button in the top-right header between "Live Status" and "Sign Out"
+- Links to `/settings`
+
+**5. Route registration** (`src/App.tsx`)
+
+- Add `<Route path="/settings" element={<Settings />} />`
+
+**75 Edge function updates** (future consideration)
+
+- Once settings are stored, the `lightning-monitor` and `heat-monitor` functions can read `countdown_duration_minutes` from the settings table instead of using hardcoded values
+- This can be done as a follow-up to keep this change focused
