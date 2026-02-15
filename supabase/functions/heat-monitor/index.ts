@@ -13,6 +13,7 @@ interface Game {
   id: string;
   venue_id: string;
   heat_status: HeatStatus;
+  sport_intensity: SportIntensity | null;
   venues: {
     id: string;
     name: string;
@@ -132,7 +133,7 @@ Deno.serve(async (req) => {
     const { data: allGames, error: gamesError } = await supabase
       .from("games")
       .select(
-        "id, venue_id, heat_status, warmup_minutes, start_time, end_time, venues(id, name, latitude, longitude, sport_intensity)"
+        "id, venue_id, heat_status, warmup_minutes, start_time, end_time, sport_intensity, venues(id, name, latitude, longitude, sport_intensity)"
       )
       .lte("start_time", nowISO)
       .gte("end_time", nowISO);
@@ -211,7 +212,7 @@ Deno.serve(async (req) => {
         `${venue.name}: ${tempC}°C, ${humidity}% humidity, intensity: ${venue.sport_intensity}`
       );
 
-      const newStatus = calculateHeatStatus(tempC, humidity, venue.sport_intensity);
+      const newStatus = calculateHeatStatus(tempC, humidity, game.sport_intensity ?? venue.sport_intensity);
 
       // Update all games at this venue
       for (const game of venueGamesList) {
@@ -233,12 +234,13 @@ Deno.serve(async (req) => {
           (newStatus === "high" || newStatus === "extreme") &&
           previousStatus !== newStatus
         ) {
+          const gameIntensity = game.sport_intensity ?? venue.sport_intensity;
           const alertMessage = getAlertMessage(
             newStatus,
             venue.name,
             tempC,
             humidity,
-            venue.sport_intensity
+            gameIntensity
           );
 
           // Send SMS alert

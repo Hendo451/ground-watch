@@ -12,6 +12,7 @@ export interface Venue {
   longitude: number;
   safe_zone_radius: number;
   sport_intensity: SportIntensity;
+  default_sport: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +39,7 @@ export interface Game {
   last_strike_distance: number | null;
   last_strike_at: string | null;
   warmup_minutes: number;
+  sport_intensity: SportIntensity | null;
   heat_status: HeatStatus;
   last_temp_c: number | null;
   last_humidity: number | null;
@@ -118,7 +120,7 @@ export const useGames = () => {
 export const useAddVenue = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number; sport_intensity?: SportIntensity }) => {
+    mutationFn: async (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number; sport_intensity?: SportIntensity; default_sport?: string }) => {
       const { data, error } = await supabase.from('venues').insert({
         ...venue,
         sport_intensity: venue.sport_intensity || 'category_1'
@@ -157,7 +159,7 @@ export const useAddOfficial = () => {
 export const useAddGame = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number }) => {
+    mutationFn: async (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number; sport_intensity?: SportIntensity }) => {
       const { data, error } = await supabase.from('games').insert({ 
         ...game, 
         status: 'green',
@@ -280,7 +282,7 @@ export const useDeleteGame = () => {
 export const useBulkAddGames = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (games: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number }[]) => {
+    mutationFn: async (games: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number; sport_intensity?: SportIntensity }[]) => {
       const gamesWithDefaults = games.map(g => ({ 
         ...g, 
         status: 'green' as const,

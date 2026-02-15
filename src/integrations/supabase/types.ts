@@ -31,6 +31,7 @@ export type Database = {
           last_temp_c: number | null
           lightning_forecast: string
           name: string | null
+          sport_intensity: Database["public"]["Enums"]["sport_intensity"] | null
           start_time: string
           status: Database["public"]["Enums"]["lightning_status"]
           updated_at: string
@@ -54,6 +55,9 @@ export type Database = {
           last_temp_c?: number | null
           lightning_forecast?: string
           name?: string | null
+          sport_intensity?:
+            | Database["public"]["Enums"]["sport_intensity"]
+            | null
           start_time: string
           status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string
@@ -77,6 +81,9 @@ export type Database = {
           last_temp_c?: number | null
           lightning_forecast?: string
           name?: string | null
+          sport_intensity?:
+            | Database["public"]["Enums"]["sport_intensity"]
+            | null
           start_time?: string
           status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string
@@ -489,6 +496,7 @@ export type Database = {
       venues: {
         Row: {
           created_at: string
+          default_sport: string | null
           id: string
           latitude: number
           longitude: number
@@ -499,6 +507,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_sport?: string | null
           id?: string
           latitude: number
           longitude: number
@@ -509,6 +518,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_sport?: string | null
           id?: string
           latitude?: number
           longitude?: number

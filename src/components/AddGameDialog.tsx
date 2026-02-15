@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,13 @@ import { CalendarPlus, CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Venue, Grade } from '@/hooks/useData';
 import { TimePicker } from './TimePicker';
+import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport } from '@/lib/sportCategories';
+import type { SportIntensity } from '@/lib/sportCategories';
 
 interface AddGameDialogProps {
   venues: Venue[];
   grades: Grade[];
-  onAdd: (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number }) => void;
+  onAdd: (game: { name?: string; venue_id: string; grade_id?: string; start_time: string; end_time: string; warmup_minutes?: number; sport_intensity?: SportIntensity }) => void;
   isPending?: boolean;
 }
 
@@ -28,13 +30,24 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [warmupMinutes, setWarmupMinutes] = useState('45');
+  const [sport, setSport] = useState('');
+
+  // When venue changes, auto-set sport to venue's default
+  useEffect(() => {
+    if (venueId) {
+      const venue = venues.find(v => v.id === venueId);
+      if (venue?.default_sport) {
+        setSport(venue.default_sport);
+      }
+    }
+  }, [venueId, venues]);
+
+  const derivedCategory = sport ? getCategoryForSport(sport) : undefined;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!date) return;
     const dateStr = format(date, 'yyyy-MM-dd');
-    // Build date-time in the user's local timezone by using a Date object
-    // to get the correct UTC representation
     const startDate = new Date(`${dateStr}T${startTime}:00`);
     const endDate = new Date(`${dateStr}T${endTime}:00`);
     const start_time = startDate.toISOString();
@@ -45,7 +58,8 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
       grade_id: gradeId && gradeId !== '__none__' ? gradeId : undefined,
       start_time, 
       end_time,
-      warmup_minutes: parseInt(warmupMinutes) || 45
+      warmup_minutes: parseInt(warmupMinutes) || 45,
+      sport_intensity: derivedCategory,
     });
     setOpen(false);
     resetForm();
@@ -59,6 +73,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
     setStartTime('');
     setEndTime('');
     setWarmupMinutes('45');
+    setSport('');
   };
 
   const isValid = venueId && date && startTime && endTime;
@@ -107,6 +122,25 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sport</Label>
+            <Select value={sport} onValueChange={setSport}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select sport" />
+              </SelectTrigger>
+              <SelectContent>
+                {SPORT_CATEGORIES.map(s => (
+                  <SelectItem key={s.sport} value={s.sport}>{s.sport}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {derivedCategory && (
+              <p className="text-xs text-muted-foreground">
+                {CATEGORY_LABELS[derivedCategory]}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
