@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Game, Venue, LightningStrike } from '@/hooks/useData';
 import { HeatRiskGauge } from '@/components/HeatRiskGauge';
 import { CATEGORY_LABELS, getThresholdsForCategory } from '@/lib/sportCategories';
@@ -53,11 +53,20 @@ export const GameDetailsDialog = ({ open, onOpenChange, game, venue, isActive, s
   const formatDay = (d: Date) => d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
   useEffect(() => {
-    if (!open || !mapContainerRef.current) return;
+    if (!open) {
+      // Clean up when closing
+      mapRef.current?.remove();
+      mapRef.current = null;
+      return;
+    }
 
-    // Small delay to let sheet animate open
+    // Wait for sheet open animation to complete so container has dimensions
     const timer = setTimeout(() => {
       if (!mapContainerRef.current || mapRef.current) return;
+      
+      // Verify container has dimensions
+      const rect = mapContainerRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
 
       const map = new maplibregl.Map({
         container: mapContainerRef.current,
@@ -70,18 +79,19 @@ export const GameDetailsDialog = ({ open, onOpenChange, game, venue, isActive, s
       mapRef.current = map;
 
       map.on('load', () => {
+        // Force resize after load to ensure correct rendering
+        map.resize();
+
         // Venue marker
         const el = document.createElement('div');
         el.innerHTML = `<div style="width:14px;height:14px;background:hsl(45,93%,47%);border:2px solid white;border-radius:50%;box-shadow:0 0 8px rgba(234,179,8,0.6)"></div>`;
         new maplibregl.Marker({ element: el }).setLngLat([venue.longitude, venue.latitude]).addTo(map);
 
         if (isActive) {
-          // Safety radius
           map.addSource('radius', { type: 'geojson', data: createCircleGeoJSON(venue.latitude, venue.longitude, venue.safe_zone_radius) as any });
           map.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius', paint: { 'fill-color': '#ef4444', 'fill-opacity': 0.08 } });
           map.addLayer({ id: 'radius-line', type: 'line', source: 'radius', paint: { 'line-color': '#ef4444', 'line-width': 2, 'line-dasharray': [4, 3], 'line-opacity': 0.6 } });
 
-          // Strikes
           if (strikes.length > 0) {
             const now = Date.now();
             const features = strikes.map(s => ({
@@ -96,12 +106,10 @@ export const GameDetailsDialog = ({ open, onOpenChange, game, venue, isActive, s
           map.setZoom(10);
         }
       });
-    }, 150);
+    }, 500);
 
     return () => {
       clearTimeout(timer);
-      mapRef.current?.remove();
-      mapRef.current = null;
     };
   }, [open, venue, isActive, strikes]);
 
@@ -110,6 +118,7 @@ export const GameDetailsDialog = ({ open, onOpenChange, game, venue, isActive, s
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl p-0">
         <SheetHeader className="px-5 pt-5 pb-3">
           <SheetTitle className="text-base">{game.name || venue.name} — Details</SheetTitle>
+          <SheetDescription className="sr-only">Game details including venue map, heat risk, and thresholds</SheetDescription>
         </SheetHeader>
 
         {/* Map */}
