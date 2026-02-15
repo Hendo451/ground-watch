@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     const { data: games, error: gamesError } = await supabase
       .from("games")
       .select(
-        "id, venue_id, start_time, heat_status, venues(id, name, latitude, longitude, sport_intensity)"
+        "id, venue_id, start_time, heat_status, sport_intensity, venues(id, name, latitude, longitude, sport_intensity)"
       )
       .gt("start_time", lookBack.toISOString())
       .lt("start_time", weekAhead.toISOString());
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     // Group games by venue to minimise API calls
     const venueMap = new Map<
       string,
-      { venue: { id: string; name: string; latitude: number; longitude: number; sport_intensity: SportIntensity }; games: { id: string; start_time: string }[] }
+      { venue: { id: string; name: string; latitude: number; longitude: number; sport_intensity: SportIntensity }; games: { id: string; start_time: string; sport_intensity: SportIntensity | null }[] }
     >();
 
     for (const game of games as any[]) {
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
       if (!venueMap.has(vid)) {
         venueMap.set(vid, { venue: game.venues, games: [] });
       }
-      venueMap.get(vid)!.games.push({ id: game.id, start_time: game.start_time });
+      venueMap.get(vid)!.games.push({ id: game.id, start_time: game.start_time, sport_intensity: (game as any).sport_intensity ?? null });
     }
 
     let updated = 0;
@@ -183,8 +183,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const heatStatus = calculateHeatStatus(conditions.tempC, conditions.humidity, venue.sport_intensity);
-        console.log(`  Game ${game.id} start=${game.start_time} matched period=${closestPeriod.dateTimeISO}: ${conditions.tempC}°C / ${conditions.humidity}% → ${heatStatus}`);
+        const gameIntensity = game.sport_intensity ?? venue.sport_intensity;
+        const heatStatus = calculateHeatStatus(conditions.tempC, conditions.humidity, gameIntensity);
+        console.log(`  Game ${game.id} start=${game.start_time} matched period=${closestPeriod.dateTimeISO}: ${conditions.tempC}°C / ${conditions.humidity}% → ${heatStatus} (intensity: ${gameIntensity})`);
 
         await supabase.from("games").update({
           last_temp_c: conditions.tempC,

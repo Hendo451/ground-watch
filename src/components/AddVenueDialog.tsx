@@ -6,19 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Loader2 } from 'lucide-react';
 import { LocationSearch } from './LocationSearch';
-
-type SportIntensity = 'category_1' | 'category_2' | 'category_3';
+import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport, type SportIntensity } from '@/lib/sportCategories';
 
 interface AddVenueDialogProps {
-  onAdd: (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number; sport_intensity: SportIntensity }) => void;
+  onAdd: (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number; sport_intensity: SportIntensity; default_sport: string }) => void;
   isPending?: boolean;
 }
-
-const intensityOptions: { value: SportIntensity; label: string; description: string }[] = [
-  { value: 'category_1', label: 'Category 1 - Extreme', description: 'AFL, Soccer, Rugby, Long-distance running' },
-  { value: 'category_2', label: 'Category 2 - High', description: 'Basketball, Netball, Tennis, Cricket (batting)' },
-  { value: 'category_3', label: 'Category 3 - Moderate', description: 'Cricket (fielding), Baseball, Golf, Lawn Bowls' },
-];
 
 export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const [open, setOpen] = useState(false);
@@ -26,7 +19,9 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [radius, setRadius] = useState('16');
-  const [sportIntensity, setSportIntensity] = useState<SportIntensity>('category_1');
+  const [defaultSport, setDefaultSport] = useState('AFL');
+
+  const derivedCategory = getCategoryForSport(defaultSport);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +30,8 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
       latitude: parseFloat(lat), 
       longitude: parseFloat(lng), 
       safe_zone_radius: parseFloat(radius),
-      sport_intensity: sportIntensity
+      sport_intensity: derivedCategory,
+      default_sport: defaultSport,
     });
   };
 
@@ -48,7 +44,7 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
-      setName(''); setLat(''); setLng(''); setRadius('16'); setSportIntensity('category_1');
+      setName(''); setLat(''); setLng(''); setRadius('16'); setDefaultSport('AFL');
     }
   };
 
@@ -70,7 +66,7 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="venue-name">Venue Name</Label>
-            <Input id="venue-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Allianz Stadium" required />
+            <Input id="venue-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. MCG (AFL)" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -87,24 +83,19 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
             <Input id="radius" type="number" value={radius} onChange={e => setRadius(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label>Sport Intensity Category</Label>
-            <Select value={sportIntensity} onValueChange={(v) => setSportIntensity(v as SportIntensity)}>
+            <Label>Default Sport</Label>
+            <Select value={defaultSport} onValueChange={setDefaultSport}>
               <SelectTrigger>
-                <SelectValue placeholder="Select sport intensity" />
+                <SelectValue placeholder="Select sport" />
               </SelectTrigger>
               <SelectContent>
-                {intensityOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    <div>
-                      <span className="font-medium">{opt.label}</span>
-                      <span className="text-xs text-muted-foreground ml-2">({opt.description})</span>
-                    </div>
-                  </SelectItem>
+                {SPORT_CATEGORIES.map(s => (
+                  <SelectItem key={s.sport} value={s.sport}>{s.sport}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Used for heat risk calculations per SMA 2024 guidelines.
+              {CATEGORY_LABELS[derivedCategory]} — used for heat risk calculations per SMA 2024.
             </p>
           </div>
           <Button type="submit" className="w-full" disabled={isPending}>
