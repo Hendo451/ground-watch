@@ -204,7 +204,7 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
 
         {game.status === 'red' && game.countdown_end && (
           <div className="rounded-md bg-danger/10 border border-danger/20 px-3 py-2 text-xs text-danger font-medium">
-            🔒 Game stopped — 30-min restart countdown active
+            🔒 Game stopped — expected restart {new Date(game.countdown_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} if no further strikes
           </div>
         )}
 
