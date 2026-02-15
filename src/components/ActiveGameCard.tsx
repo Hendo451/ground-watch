@@ -82,7 +82,7 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
 
   return (
     <TooltipProvider delayDuration={200}>
-      <Card className="border-border bg-card p-4 space-y-3">
+      <Card className="border-border bg-card p-3 space-y-2">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -149,15 +149,10 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{formatDay(game.start_time)}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            <span>{formatTime(game.start_time)} – {formatTime(game.end_time)}</span>
-          </div>
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" />
+          <span>{formatDay(game.start_time)}, {formatTime(game.start_time)} – {formatTime(game.end_time)}</span>
+          {official && <span className="text-muted-foreground/60">— {official.name}</span>}
         </div>
 
         {/* Conditions row — shows when data is available */}
@@ -189,12 +184,6 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
           </div>
         }
 
-        {official &&
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground border-t border-border pt-2">
-            <User className="h-3 w-3" />
-            <span>{official.name} · {official.mobile}</span>
-          </div>
-        }
 
         {game.status === 'red' && game.countdown_end &&
         <div className="rounded-md bg-danger/10 border border-danger/20 px-3 py-2 text-xs text-danger font-medium">
@@ -203,11 +192,11 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
         }
 
         {isActive &&
-        <Link to={`/map?venue=${venue.id}&game=${game.id}`}>
-            <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs">
-              <Map className="h-3.5 w-3.5" /> Lightning Map
-            </Button>
-          </Link>
+        <div className="flex justify-end">
+            <Link to={`/map?venue=${venue.id}&game=${game.id}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Map className="h-3 w-3" /> Map
+            </Link>
+          </div>
         }
       </Card>
     </TooltipProvider>);
