@@ -16,7 +16,7 @@ import { TrainingManager } from '@/components/TrainingManager';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame, AlertTriangle } from 'lucide-react';
+import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame, AlertTriangle, Settings } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -83,10 +83,15 @@ const Dashboard = () => {
   const now = new Date();
   const activeGames = games.filter(g => {
     const start = new Date(g.start_time);
+    const warmupStart = new Date(start.getTime() - g.warmup_minutes * 60 * 1000);
     const end = new Date(g.end_time);
-    return now >= start && now <= end;
+    return now >= warmupStart && now <= end;
   });
-  const upcomingGames = games.filter(g => new Date(g.start_time) > now);
+  const upcomingGames = games.filter(g => {
+    const start = new Date(g.start_time);
+    const warmupStart = new Date(start.getTime() - g.warmup_minutes * 60 * 1000);
+    return warmupStart > now;
+  });
 
   // Games in the next 7 days
   const startOfToday = new Date(now);
@@ -102,10 +107,15 @@ const Dashboard = () => {
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   const activeThisWeek = thisWeekGames.filter(g => {
     const start = new Date(g.start_time);
+    const warmupStart = new Date(start.getTime() - g.warmup_minutes * 60 * 1000);
     const end = new Date(g.end_time);
-    return now >= start && now <= end;
+    return now >= warmupStart && now <= end;
   });
-  const upcomingThisWeek = thisWeekGames.filter(g => new Date(g.start_time) > now);
+  const upcomingThisWeek = thisWeekGames.filter(g => {
+    const start = new Date(g.start_time);
+    const warmupStart = new Date(start.getTime() - g.warmup_minutes * 60 * 1000);
+    return warmupStart > now;
+  });
   const pastGames = games.filter(g => new Date(g.end_time) < now);
 
   const statusCounts = {
@@ -137,6 +147,11 @@ const Dashboard = () => {
             <Link to="/status">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs">
                 <Shield className="h-3.5 w-3.5" /> Live Status
+              </Button>
+            </Link>
+            <Link to="/settings">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Settings className="h-4 w-4" />
               </Button>
             </Link>
             <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5 text-xs">
