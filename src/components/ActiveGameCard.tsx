@@ -1,10 +1,11 @@
-import { Game, Venue, Official } from '@/hooks/useData';
+import { useState } from 'react';
+import { Game, Venue, Official, LightningStrike } from '@/hooks/useData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MapPin, Clock, Pencil, Thermometer, ShieldCheck, AlertTriangle, Flame, Zap, Map } from 'lucide-react';
+import { MapPin, Clock, Pencil, Thermometer, ShieldCheck, AlertTriangle, Flame, Zap, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import { GameDetailsDialog } from '@/components/GameDetailsDialog';
 
 interface ActiveGameCardProps {
   game: Game;
@@ -12,6 +13,7 @@ interface ActiveGameCardProps {
   official?: Official;
   onEdit?: (game: Game) => void;
   canEdit?: boolean;
+  strikes?: LightningStrike[];
 }
 
 const lightningConfig = {
@@ -52,7 +54,8 @@ const heatTooltips = {
   extreme: ['SUSPEND PLAY IMMEDIATELY', 'Move all participants to cooled environment', 'Per SMA 2024 Extreme Heat Policy']
 };
 
-export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: ActiveGameCardProps) => {
+export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit, strikes = [] }: ActiveGameCardProps) => {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const formatDay = (iso: string) =>
@@ -191,13 +194,20 @@ export const ActiveGameCard = ({ game, venue, official, onEdit, canEdit }: Activ
           </div>
         }
 
-        {isActive &&
         <div className="flex justify-end">
-            <Link to={`/map?venue=${venue.id}&game=${game.id}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <Map className="h-3 w-3" /> Map
-            </Link>
-          </div>
-        }
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => setDetailsOpen(true)}>
+            <Info className="h-3 w-3" /> Details
+          </Button>
+        </div>
+
+        <GameDetailsDialog
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+          game={game}
+          venue={venue}
+          isActive={isActive}
+          strikes={strikes}
+        />
       </Card>
     </TooltipProvider>);
 

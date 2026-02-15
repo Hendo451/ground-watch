@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, useBulkAddGames, useGrades, useTrainings, useTrainingExceptions, useAddTraining, useAddTrainingException, Game } from '@/hooks/useData';
+import { useState, useMemo } from 'react';
+import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, useBulkAddGames, useGrades, useTrainings, useTrainingExceptions, useAddTraining, useAddTrainingException, Game, useLightningStrikes } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { ActiveGameCard } from '@/components/ActiveGameCard';
 import { AddVenueDialog } from '@/components/AddVenueDialog';
