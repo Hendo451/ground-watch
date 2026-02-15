@@ -88,19 +88,16 @@ const Dashboard = () => {
   });
   const upcomingGames = games.filter(g => new Date(g.start_time) > now);
 
-  // Games this week (Mon–Sun)
-  const startOfWeek = new Date(now);
-  const day = startOfWeek.getDay();
-  const diffToMon = day === 0 ? -6 : 1 - day;
-  startOfWeek.setDate(startOfWeek.getDate() + diffToMon);
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
+  // Games in the next 7 days
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfToday);
   endOfWeek.setDate(endOfWeek.getDate() + 7);
   const thisWeekGames = games
     .filter(g => {
       const start = new Date(g.start_time);
       const end = new Date(g.end_time);
-      return start >= startOfWeek && start < endOfWeek && end > now;
+      return start >= startOfToday && start < endOfWeek && end > now;
     })
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   const activeThisWeek = thisWeekGames.filter(g => {
@@ -240,11 +237,11 @@ const Dashboard = () => {
               </section>
             )}
 
-            {/* Games This Week */}
+            {/* Upcoming Games (Next 7 Days) */}
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
-                Games This Week ({upcomingThisWeek.length})
+                Upcoming Games ({upcomingThisWeek.length})
               </h2>
               {upcomingThisWeek.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
