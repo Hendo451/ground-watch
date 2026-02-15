@@ -180,7 +180,7 @@ const WeatherMap = ({
 
   return (
     <div className="relative w-full h-full" style={{ minHeight: 400 }}>
-      <div ref={containerRef} className="w-full h-full rounded-lg overflow-hidden" />
+      <div ref={containerRef} className="absolute inset-0 rounded-lg overflow-hidden" />
       
       {/* Legend overlay */}
       <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm border border-border rounded-lg p-3 space-y-2 text-xs z-10">
