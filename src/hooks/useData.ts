@@ -176,10 +176,75 @@ export const useAddGame = () => {
   });
 };
 
+export interface LightningStrike {
+  id: string;
+  game_id: string;
+  venue_id: string;
+  latitude: number;
+  longitude: number;
+  distance_km: number;
+  detected_at: string;
+  strike_type: string | null;
+  peak_amperage: number | null;
+}
+
+export const useLightningStrikes = (gameId: string | null) => {
+  const queryClient = useQueryClient();
+
+  useQuery({
+    queryKey: ['lightning_strikes', gameId],
+    enabled: !!gameId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lightning_strikes')
+        .select('*')
+        .eq('game_id', gameId!)
+        .order('detected_at', { ascending: false });
+      if (error) throw error;
+      return data as LightningStrike[];
+    },
+  });
+
+  // Subscribe to realtime
+  useQuery({
+    queryKey: ['lightning_strikes_realtime_sub', gameId],
+    enabled: !!gameId,
+    queryFn: () => {
+      const channel = supabase
+        .channel(`strikes-${gameId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'lightning_strikes', filter: `game_id=eq.${gameId}` },
+          () => {
+            queryClient.invalidateQueries({ queryKey: ['lightning_strikes', gameId] });
+          }
+        )
+        .subscribe();
+      return { channel };
+    },
+    staleTime: Infinity,
+  });
+
+  // Return the query result
+  return useQuery({
+    queryKey: ['lightning_strikes', gameId],
+    enabled: !!gameId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lightning_strikes')
+        .select('*')
+        .eq('game_id', gameId!)
+        .order('detected_at', { ascending: false });
+      if (error) throw error;
+      return data as LightningStrike[];
+    },
+  });
+};
+
 export const useUpdateGame = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (game: { id: string; name?: string; start_time?: string; end_time?: string }) => {
+    mutationFn: async (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number }) => {
       const { id, ...updates } = game;
       const { data, error } = await supabase.from('games').update(updates).eq('id', id).select().single();
       if (error) throw error;

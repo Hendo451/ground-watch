@@ -10,7 +10,7 @@ interface EditGameDialogProps {
   game: Game | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (game: { id: string; name?: string; start_time?: string; end_time?: string }) => void;
+  onSave: (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number }) => void;
   isPending?: boolean;
 }
 
@@ -20,13 +20,14 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
   const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [warmupMinutes, setWarmupMinutes] = useState(45);
 
   useEffect(() => {
     if (game) {
       setName(game.name || '');
+      setWarmupMinutes(game.warmup_minutes ?? 45);
       const start = new Date(game.start_time);
       const end = new Date(game.end_time);
-      // Use local date/time strings for display
       const pad = (n: number) => n.toString().padStart(2, '0');
       setStartDate(`${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`);
       setStartTime(`${pad(start.getHours())}:${pad(start.getMinutes())}`);
@@ -41,7 +42,7 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
     
     const start_time = new Date(`${startDate}T${startTime}:00`).toISOString();
     const end_time = new Date(`${endDate}T${endTime}:00`).toISOString();
-    onSave({ id: game.id, name: name || undefined, start_time, end_time });
+    onSave({ id: game.id, name: name || undefined, start_time, end_time, warmup_minutes: warmupMinutes });
   };
 
   return (
@@ -74,6 +75,11 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
               <Label htmlFor="edit-end-time">End Time</Label>
               <Input id="edit-end-time" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-warmup">Warm-up Period (mins)</Label>
+            <Input id="edit-warmup" type="number" min={0} max={120} value={warmupMinutes} onChange={e => setWarmupMinutes(Number(e.target.value))} />
+            <p className="text-xs text-muted-foreground">How many minutes before start time to begin monitoring (0–120)</p>
           </div>
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

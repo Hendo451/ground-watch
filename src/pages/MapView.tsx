@@ -1,4 +1,4 @@
-import { useVenues, useGames } from '@/hooks/useData';
+import { useVenues, useGames, useLightningStrikes } from '@/hooks/useData';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, MapPin, Loader2 } from 'lucide-react';
@@ -25,6 +25,8 @@ const MapViewPage = () => {
     if (!gameId) return null;
     return games.find(g => g.id === gameId) || null;
   }, [games, gameId]);
+
+  const { data: strikes = [] } = useLightningStrikes(gameId);
 
   const missingCredentials = !XWEATHER_CLIENT_ID || !XWEATHER_CLIENT_SECRET;
 
@@ -79,6 +81,7 @@ const MapViewPage = () => {
             lastStrikeAt={activeGame?.last_strike_at}
             lastStrikeLat={(activeGame as any)?.last_strike_lat}
             lastStrikeLng={(activeGame as any)?.last_strike_lng}
+            strikes={strikes}
           />
         ) : (
           <div className="flex items-center justify-center h-full min-h-[400px]">

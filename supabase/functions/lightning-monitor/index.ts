@@ -137,6 +137,29 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // Insert all detected strikes into lightning_strikes table
+      const strikesToInsert = xweatherData.response.map((flash) => ({
+        game_id: game.id,
+        venue_id: venue.id,
+        latitude: flash.loc.lat,
+        longitude: flash.loc.long,
+        distance_km: flash.relativeTo.distanceKM,
+        detected_at: flash.ob.dateTimeISO,
+        strike_type: flash.ob.type || null,
+        peak_amperage: flash.ob.peakAmperage || null,
+      }));
+
+      if (strikesToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from("lightning_strikes")
+          .insert(strikesToInsert);
+        if (insertError) {
+          console.error(`Failed to insert strikes for ${venue.name}:`, insertError);
+        } else {
+          console.log(`Inserted ${strikesToInsert.length} strikes for ${venue.name}`);
+        }
+      }
+
       // Find closest strike
       const closestStrike = xweatherData.response.reduce(
         (closest, flash) =>
