@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Loader2, Save, MapPin, Users } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { SPORT_CATEGORIES } from '@/lib/sportCategories';
+import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport } from '@/lib/sportCategories';
 
 const Settings = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -175,6 +175,31 @@ const Settings = () => {
               disabled={!isAdmin}
             />
           </div>
+        </Card>
+
+        {/* Default Sport */}
+        <Card className="p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Default Sport</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Pre-selects this sport when creating new venues. Can be overridden per venue.
+            </p>
+          </div>
+          <Select value={defaultSport ?? ''} onValueChange={(v) => { setDefaultSport(v); markDirty(); }} disabled={!isAdmin}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select default sport" />
+            </SelectTrigger>
+            <SelectContent>
+              {SPORT_CATEGORIES.map(s => (
+                <SelectItem key={s.sport} value={s.sport}>{s.sport}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {defaultSport && (
+            <p className="text-xs text-muted-foreground">
+              {CATEGORY_LABELS[getCategoryForSport(defaultSport)]} — used for heat risk calculations per SMA 2024.
+            </p>
+          )}
         </Card>
 
         {/* Quick Links */}

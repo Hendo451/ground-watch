@@ -11,17 +11,19 @@ import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport, type SportInten
 interface AddVenueDialogProps {
   onAdd: (venue: { name: string; latitude: number; longitude: number; safe_zone_radius: number; sport_intensity: SportIntensity; default_sport: string }) => void;
   isPending?: boolean;
+  defaultSport?: string | null;
 }
 
-export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
+export const AddVenueDialog = ({ onAdd, isPending, defaultSport: defaultSportProp }: AddVenueDialogProps) => {
+  const initialSport = defaultSportProp || 'AFL';
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [radius, setRadius] = useState('16');
-  const [defaultSport, setDefaultSport] = useState('AFL');
+  const [selectedSport, setSelectedSport] = useState(initialSport);
 
-  const derivedCategory = getCategoryForSport(defaultSport);
+  const derivedCategory = getCategoryForSport(selectedSport);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +33,7 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
       longitude: parseFloat(lng), 
       safe_zone_radius: parseFloat(radius),
       sport_intensity: derivedCategory,
-      default_sport: defaultSport,
+      default_sport: selectedSport,
     });
   };
 
@@ -44,7 +46,7 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
-      setName(''); setLat(''); setLng(''); setRadius('16'); setDefaultSport('AFL');
+      setName(''); setLat(''); setLng(''); setRadius('16'); setSelectedSport(initialSport);
     }
   };
 
@@ -84,7 +86,7 @@ export const AddVenueDialog = ({ onAdd, isPending }: AddVenueDialogProps) => {
           </div>
           <div className="space-y-2">
             <Label>Default Sport</Label>
-            <Select value={defaultSport} onValueChange={setDefaultSport}>
+            <Select value={selectedSport} onValueChange={setSelectedSport}>
               <SelectTrigger>
                 <SelectValue placeholder="Select sport" />
               </SelectTrigger>
