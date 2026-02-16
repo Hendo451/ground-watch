@@ -507,3 +507,77 @@ export const useDeleteTrainingException = () => {
     },
   });
 };
+
+// Venue mutations
+export const useUpdateVenue = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (venue: { id: string; name?: string; latitude?: number; longitude?: number; safe_zone_radius?: number; sport_intensity?: SportIntensity; default_sport?: string }) => {
+      const { id, ...updates } = venue;
+      const { data, error } = await supabase.from('venues').update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      toast.success('Venue updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};
+
+export const useDeleteVenue = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('venues').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      toast.success('Venue deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};
+
+// Official mutations
+export const useUpdateOfficial = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (official: { id: string; name?: string; mobile?: string; venue_id?: string | null; alerts_enabled?: boolean }) => {
+      const { id, ...updates } = official;
+      const { data, error } = await supabase.from('officials').update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['officials'] });
+      toast.success('Official updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};
+
+export const useDeleteOfficial = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('officials').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['officials'] });
+      toast.success('Official deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};

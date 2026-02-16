@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings, useUpdateSettings } from '@/hooks/useSettings';
-import { useVenues, useOfficials, useAddVenue, useAddOfficial } from '@/hooks/useData';
+import { useVenues, useOfficials, useAddVenue, useAddOfficial, useUpdateVenue, useDeleteVenue, useUpdateOfficial, useDeleteOfficial, Venue, Official } from '@/hooks/useData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,13 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Loader2, Save, MapPin, Users, Plus } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ArrowLeft, Loader2, Save, MapPin, Users, Pencil, Trash2, ChevronDown, Phone, Bell, BellOff } from 'lucide-react';
 import { AddVenueDialog } from '@/components/AddVenueDialog';
 import { AddOfficialDialog } from '@/components/AddOfficialDialog';
+import { EditVenueDialog } from '@/components/EditVenueDialog';
+import { EditOfficialDialog } from '@/components/EditOfficialDialog';
 import { Link, Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport } from '@/lib/sportCategories';
@@ -24,6 +28,10 @@ const Settings = () => {
   const updateSettings = useUpdateSettings();
   const addVenue = useAddVenue();
   const addOfficial = useAddOfficial();
+  const updateVenue = useUpdateVenue();
+  const deleteVenue = useDeleteVenue();
+  const updateOfficial = useUpdateOfficial();
+  const deleteOfficial = useDeleteOfficial();
 
   const [warmup, setWarmup] = useState(45);
   const [upcomingDays, setUpcomingDays] = useState(7);
@@ -31,6 +39,11 @@ const Settings = () => {
   const [smsEnabled, setSmsEnabled] = useState(true);
   const [defaultSport, setDefaultSport] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+
+  const [venuesOpen, setVenuesOpen] = useState(false);
+  const [officialsOpen, setOfficialsOpen] = useState(false);
+  const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
+  const [editingOfficial, setEditingOfficial] = useState<Official | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -206,34 +219,155 @@ const Settings = () => {
           )}
         </Card>
 
-        {/* Venues & Officials */}
+        {/* Venues */}
         <Card className="p-6 space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Venues & Officials</h2>
-            <p className="text-xs text-muted-foreground mt-1">Manage registered venues and officials.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <MapPin className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-lg font-semibold text-foreground">{venues.length}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Venues</p>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Venues</h2>
+              <p className="text-xs text-muted-foreground mt-1">{venues.length} registered venue{venues.length !== 1 ? 's' : ''}</p>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <Users className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-lg font-semibold text-foreground">{officials.length}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Officials</p>
-              </div>
-            </div>
-          </div>
-          {isAdmin && (
-            <div className="flex items-center gap-2 pt-2">
+            {isAdmin && (
               <AddVenueDialog onAdd={(v) => addVenue.mutate(v)} isPending={addVenue.isPending} defaultSport={settings?.default_sport} />
-              <AddOfficialDialog venues={venues} onAdd={(o) => addOfficial.mutate(o)} isPending={addOfficial.isPending} />
+            )}
+          </div>
+
+          <Collapsible open={venuesOpen} onOpenChange={setVenuesOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {venuesOpen ? 'Hide' : 'Show'} venues
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${venuesOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pt-2">
+              {venues.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No venues added yet</p>
+              ) : (
+                venues.map(venue => {
+                  const official = officials.find(o => o.venue_id === venue.id);
+                  return (
+                    <div key={venue.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{venue.name}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span>{venue.safe_zone_radius} km radius</span>
+                          {venue.default_sport && <span>• {venue.default_sport}</span>}
+                          {official && <span>• {official.name}</span>}
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingVenue(venue)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete venue?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete "{venue.name}". Games assigned to this venue may be affected.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteVenue.mutate(venue.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        {/* Officials */}
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Officials</h2>
+              <p className="text-xs text-muted-foreground mt-1">{officials.length} registered official{officials.length !== 1 ? 's' : ''}</p>
             </div>
-          )}
+            {isAdmin && (
+              <AddOfficialDialog venues={venues} onAdd={(o) => addOfficial.mutate(o)} isPending={addOfficial.isPending} />
+            )}
+          </div>
+
+          <Collapsible open={officialsOpen} onOpenChange={setOfficialsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5" />
+                  {officialsOpen ? 'Hide' : 'Show'} officials
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${officialsOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pt-2">
+              {officials.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No officials added yet</p>
+              ) : (
+                officials.map(official => {
+                  const venue = venues.find(v => v.id === official.venue_id);
+                  return (
+                    <div key={official.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{official.name}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{official.mobile}</span>
+                          {venue && <span>• {venue.name}</span>}
+                          <span className="flex items-center gap-1">
+                            {official.alerts_enabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+                            {official.alerts_enabled ? 'On' : 'Off'}
+                          </span>
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingOfficial(official)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete official?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete "{official.name}".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteOfficial.mutate(official.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
 
         {!isAdmin && (
@@ -242,6 +376,23 @@ const Settings = () => {
           </p>
         )}
       </main>
+
+      {/* Edit Dialogs */}
+      <EditVenueDialog
+        venue={editingVenue}
+        open={!!editingVenue}
+        onOpenChange={(open) => !open && setEditingVenue(null)}
+        onSave={(data) => updateVenue.mutate(data, { onSuccess: () => setEditingVenue(null) })}
+        isPending={updateVenue.isPending}
+      />
+      <EditOfficialDialog
+        official={editingOfficial}
+        venues={venues}
+        open={!!editingOfficial}
+        onOpenChange={(open) => !open && setEditingOfficial(null)}
+        onSave={(data) => updateOfficial.mutate(data, { onSuccess: () => setEditingOfficial(null) })}
+        isPending={updateOfficial.isPending}
+      />
     </div>
   );
 };

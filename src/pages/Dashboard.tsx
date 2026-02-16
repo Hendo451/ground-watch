@@ -14,7 +14,7 @@ import { TrainingManager } from '@/components/TrainingManager';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Zap, MapPin, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame, AlertTriangle, Settings } from 'lucide-react';
+import { Zap, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame, AlertTriangle, Settings } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -426,47 +426,6 @@ const Dashboard = () => {
               isAdmin={isAdmin} 
             />
 
-            {/* Venues Table */}
-            <section>
-              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
-                All Venues
-              </h2>
-              <Card className="border-border bg-card overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                        <th className="text-left px-4 py-3 font-medium">Venue</th>
-                        <th className="text-left px-4 py-3 font-medium">Safe Zone</th>
-                        <th className="text-left px-4 py-3 font-medium">Assigned Official</th>
-                        <th className="text-left px-4 py-3 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {venues.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">No venues yet</td>
-                        </tr>
-                      ) : (
-                        venues.map(venue => {
-                          const official = officials.find(o => o.venue_id === venue.id);
-                          const game = games.find(g => g.venue_id === venue.id);
-                          return (
-                            <tr key={venue.id} className="border-b border-border/50 last:border-0">
-                              <td className="px-4 py-3 font-medium text-foreground">{venue.name}</td>
-                              <td className="px-4 py-3 text-muted-foreground">{venue.safe_zone_radius} km</td>
-                              <td className="px-4 py-3 text-muted-foreground">{official?.name ?? '—'}</td>
-                              <td className="px-4 py-3">{game ? <StatusBadge status={game.status} size="sm" /> : <span className="text-xs text-muted-foreground">No game</span>}</td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </section>
           </>
         )}
 
