@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Loader2, Save, MapPin, Users } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { SPORT_CATEGORIES } from '@/lib/sportCategories';
 
 const Settings = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -23,6 +25,7 @@ const Settings = () => {
   const [upcomingDays, setUpcomingDays] = useState(7);
   const [countdownMins, setCountdownMins] = useState(30);
   const [smsEnabled, setSmsEnabled] = useState(true);
+  const [defaultSport, setDefaultSport] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
@@ -31,6 +34,7 @@ const Settings = () => {
       setUpcomingDays(settings.upcoming_days_window);
       setCountdownMins(settings.countdown_duration_minutes);
       setSmsEnabled(settings.sms_alerts_enabled);
+      setDefaultSport(settings.default_sport);
       setDirty(false);
     }
   }, [settings]);
@@ -53,6 +57,7 @@ const Settings = () => {
       upcoming_days_window: upcomingDays,
       countdown_duration_minutes: countdownMins,
       sms_alerts_enabled: smsEnabled,
+      default_sport: defaultSport,
     }, {
       onSuccess: () => setDirty(false),
     });

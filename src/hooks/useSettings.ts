@@ -8,6 +8,7 @@ export interface Settings {
   upcoming_days_window: number;
   countdown_duration_minutes: number;
   sms_alerts_enabled: boolean;
+  default_sport: string | null;
   updated_at: string;
 }
 
