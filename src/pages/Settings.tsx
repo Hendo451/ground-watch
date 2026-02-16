@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings, useUpdateSettings } from '@/hooks/useSettings';
-import { useVenues, useOfficials } from '@/hooks/useData';
+import { useVenues, useOfficials, useAddVenue, useAddOfficial } from '@/hooks/useData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,9 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Loader2, Save, MapPin, Users } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, MapPin, Users, Plus } from 'lucide-react';
+import { AddVenueDialog } from '@/components/AddVenueDialog';
+import { AddOfficialDialog } from '@/components/AddOfficialDialog';
 import { Link, Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport } from '@/lib/sportCategories';
@@ -20,6 +22,8 @@ const Settings = () => {
   const { data: venues = [] } = useVenues();
   const { data: officials = [] } = useOfficials();
   const updateSettings = useUpdateSettings();
+  const addVenue = useAddVenue();
+  const addOfficial = useAddOfficial();
 
   const [warmup, setWarmup] = useState(45);
   const [upcomingDays, setUpcomingDays] = useState(7);
@@ -202,11 +206,11 @@ const Settings = () => {
           )}
         </Card>
 
-        {/* Quick Links */}
+        {/* Venues & Officials */}
         <Card className="p-6 space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Venues & Officials</h2>
-            <p className="text-xs text-muted-foreground mt-1">Quick overview of registered venues and officials.</p>
+            <p className="text-xs text-muted-foreground mt-1">Manage registered venues and officials.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -224,6 +228,12 @@ const Settings = () => {
               </div>
             </div>
           </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2 pt-2">
+              <AddVenueDialog onAdd={(v) => addVenue.mutate(v)} isPending={addVenue.isPending} defaultSport={settings?.default_sport} />
+              <AddOfficialDialog venues={venues} onAdd={(o) => addOfficial.mutate(o)} isPending={addOfficial.isPending} />
+            </div>
+          )}
         </Card>
 
         {!isAdmin && (

@@ -1,10 +1,7 @@
 import { useState, useMemo } from 'react';
-import { useVenues, useOfficials, useGames, useAddVenue, useAddOfficial, useAddGame, useUpdateGame, useDeleteGame, useBulkAddGames, useGrades, useTrainings, useTrainingExceptions, useAddTraining, useAddTrainingException, Game, useLightningStrikes } from '@/hooks/useData';
-import { useSettings } from '@/hooks/useSettings';
+import { useVenues, useOfficials, useGames, useAddGame, useUpdateGame, useDeleteGame, useBulkAddGames, useGrades, useTrainings, useTrainingExceptions, useAddTraining, useAddTrainingException, Game, useLightningStrikes } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { ActiveGameCard } from '@/components/ActiveGameCard';
-import { AddVenueDialog } from '@/components/AddVenueDialog';
-import { AddOfficialDialog } from '@/components/AddOfficialDialog';
 import { AddGameDialog } from '@/components/AddGameDialog';
 import { EditGameDialog } from '@/components/EditGameDialog';
 import { ImportDrawDialog, ExtractedGame } from '@/components/ImportDrawDialog';
@@ -29,9 +26,6 @@ const Dashboard = () => {
   const { data: trainings = [], isLoading: trainingsLoading } = useTrainings();
   const { data: trainingExceptions = [], isLoading: exceptionsLoading } = useTrainingExceptions();
 
-  const { data: settings } = useSettings();
-  const addVenue = useAddVenue();
-  const addOfficial = useAddOfficial();
   const addGame = useAddGame();
   const updateGame = useUpdateGame();
   const deleteGame = useDeleteGame();
@@ -213,8 +207,6 @@ const Dashboard = () => {
         {/* Actions */}
         {isAdmin && (
           <div className="flex items-center gap-2 flex-wrap">
-            <AddVenueDialog onAdd={(v) => addVenue.mutate(v)} isPending={addVenue.isPending} defaultSport={settings?.default_sport} />
-            <AddOfficialDialog venues={venues} onAdd={(o) => addOfficial.mutate(o)} isPending={addOfficial.isPending} />
             <AddGameDialog venues={venues} grades={grades} onAdd={(g) => addGame.mutate(g)} isPending={addGame.isPending} />
             <AddTrainingDialog venues={venues} grades={grades} onAdd={(t) => addTraining.mutate(t)} isPending={addTraining.isPending} />
             <ImportDrawDialog onGamesExtracted={handleGamesExtracted} />
