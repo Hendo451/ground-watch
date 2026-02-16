@@ -3,7 +3,7 @@ import { Game, Venue, Official, LightningStrike } from '@/hooks/useData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MapPin, Clock, Pencil, Thermometer, ShieldCheck, AlertTriangle, Flame, Zap, Info } from 'lucide-react';
+import { MapPin, Clock, Pencil, Thermometer, AlertTriangle, Flame, Zap, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameDetailsDialog } from '@/components/GameDetailsDialog';
 
@@ -17,19 +17,19 @@ interface ActiveGameCardProps {
 }
 
 const lightningConfig = {
-  green: { label: 'Clear', color: 'text-safe', bg: 'bg-safe/15', icon: ShieldCheck, dot: 'bg-safe' },
+  green: { label: 'No Storms', color: 'text-safe', bg: 'bg-safe/15', icon: Zap, dot: 'bg-safe' },
   orange: { label: 'Warning', color: 'text-warning', bg: 'bg-warning/15', icon: Zap, dot: 'bg-warning' },
   red: { label: 'Stop', color: 'text-danger', bg: 'bg-danger/15', icon: Zap, dot: 'bg-danger' }
 } as const;
 
 const forecastLightningConfig = {
-  clear: { label: 'Clear', color: 'text-safe', bg: 'bg-safe/15', icon: ShieldCheck },
+  clear: { label: 'No Storms', color: 'text-safe', bg: 'bg-safe/15', icon: Zap },
   possible: { label: 'Possible', color: 'text-warning', bg: 'bg-warning/15', icon: Zap },
   likely: { label: 'Likely', color: 'text-danger', bg: 'bg-danger/15', icon: Zap }
 } as const;
 
 const heatConfig = {
-  low: { label: 'Low', color: 'text-safe', bg: 'bg-safe/15', icon: ShieldCheck },
+  low: { label: 'Cool', color: 'text-safe', bg: 'bg-safe/15', icon: Thermometer },
   moderate: { label: 'Moderate', color: 'text-warning', bg: 'bg-warning/15', icon: Thermometer },
   high: { label: 'High', color: 'text-orange-500', bg: 'bg-orange-500/15', icon: AlertTriangle },
   extreme: { label: 'Extreme', color: 'text-danger', bg: 'bg-danger/15', icon: Flame }
