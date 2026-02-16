@@ -340,6 +340,7 @@ export type Database = {
       settings: {
         Row: {
           countdown_duration_minutes: number
+          default_sport: string | null
           default_warmup_minutes: number
           id: string
           sms_alerts_enabled: boolean
@@ -348,6 +349,7 @@ export type Database = {
         }
         Insert: {
           countdown_duration_minutes?: number
+          default_sport?: string | null
           default_warmup_minutes?: number
           id?: string
           sms_alerts_enabled?: boolean
@@ -356,6 +358,7 @@ export type Database = {
         }
         Update: {
           countdown_duration_minutes?: number
+          default_sport?: string | null
           default_warmup_minutes?: number
           id?: string
           sms_alerts_enabled?: boolean
