@@ -246,7 +246,7 @@ export const useLightningStrikes = (gameId: string | null) => {
 export const useUpdateGame = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number }) => {
+    mutationFn: async (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number; grade_id?: string | null }) => {
       const { id, ...updates } = game;
       const { data, error } = await supabase.from('games').update(updates).eq('id', id).select().single();
       if (error) throw error;

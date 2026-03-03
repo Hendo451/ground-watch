@@ -3,19 +3,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { Game } from '@/hooks/useData';
+import { Game, Grade } from '@/hooks/useData';
 
 interface EditGameDialogProps {
   game: Game | null;
+  grades: Grade[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number }) => void;
+  onSave: (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number; grade_id?: string | null }) => void;
   isPending?: boolean;
 }
 
-export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: EditGameDialogProps) => {
+export const EditGameDialog = ({ game, grades, open, onOpenChange, onSave, isPending }: EditGameDialogProps) => {
   const [name, setName] = useState('');
+  const [gradeId, setGradeId] = useState('__none__');
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -25,6 +28,7 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
   useEffect(() => {
     if (game) {
       setName(game.name || '');
+      setGradeId(game.grade_id || '__none__');
       setWarmupMinutes(game.warmup_minutes ?? 45);
       const start = new Date(game.start_time);
       const end = new Date(game.end_time);
@@ -42,7 +46,7 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
     
     const start_time = new Date(`${startDate}T${startTime}:00`).toISOString();
     const end_time = new Date(`${endDate}T${endTime}:00`).toISOString();
-    onSave({ id: game.id, name: name || undefined, start_time, end_time, warmup_minutes: warmupMinutes });
+    onSave({ id: game.id, name: name || undefined, start_time, end_time, warmup_minutes: warmupMinutes, grade_id: gradeId && gradeId !== '__none__' ? gradeId : null });
   };
 
   return (
@@ -55,6 +59,20 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
           <div className="space-y-2">
             <Label htmlFor="edit-game-name">Game Name</Label>
             <Input id="edit-game-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. U15 Semi-Final" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-game-grade">Grade (optional)</Label>
+            <Select value={gradeId} onValueChange={setGradeId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select grade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No grade</SelectItem>
+                {grades.map(g => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

@@ -431,6 +431,7 @@ const Dashboard = () => {
 
         <EditGameDialog
           game={editingGame}
+          grades={grades}
           open={!!editingGame}
           onOpenChange={(open) => !open && setEditingGame(null)}
           onSave={(data) => {
