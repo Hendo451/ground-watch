@@ -106,7 +106,7 @@ export const ImportDrawDialog = ({ onGamesExtracted }: ImportDrawDialogProps) =>
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5">
+        <Button size="sm" variant="secondary" className="gap-1.5">
           <Upload className="h-4 w-4" /> Import Draw
         </Button>
       </DialogTrigger>

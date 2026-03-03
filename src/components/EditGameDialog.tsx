@@ -3,19 +3,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { Game } from '@/hooks/useData';
+import { Game, Grade } from '@/hooks/useData';
 
 interface EditGameDialogProps {
   game: Game | null;
+  grades: Grade[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number }) => void;
+  onSave: (game: { id: string; name?: string; start_time?: string; end_time?: string; warmup_minutes?: number; grade_id?: string | null }) => void;
   isPending?: boolean;
 }
 
-export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: EditGameDialogProps) => {
+export const EditGameDialog = ({ game, grades, open, onOpenChange, onSave, isPending }: EditGameDialogProps) => {
   const [name, setName] = useState('');
+  const [gradeId, setGradeId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -25,6 +28,7 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
   useEffect(() => {
     if (game) {
       setName(game.name || '');
+      setGradeId(game.grade_id || '__none__');
       setWarmupMinutes(game.warmup_minutes ?? 45);
       const start = new Date(game.start_time);
       const end = new Date(game.end_time);
@@ -39,10 +43,11 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!game) return;
-    
+
     const start_time = new Date(`${startDate}T${startTime}:00`).toISOString();
     const end_time = new Date(`${endDate}T${endTime}:00`).toISOString();
-    onSave({ id: game.id, name: name || undefined, start_time, end_time, warmup_minutes: warmupMinutes });
+    const grade_id = gradeId && gradeId !== '__none__' ? gradeId : null;
+    onSave({ id: game.id, name: name || undefined, start_time, end_time, warmup_minutes: warmupMinutes, grade_id });
   };
 
   return (
@@ -55,6 +60,19 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
           <div className="space-y-2">
             <Label htmlFor="edit-game-name">Game Name</Label>
             <Input id="edit-game-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. U15 Semi-Final" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-game-grade">Grade</Label>
+            <Select value={gradeId} onValueChange={setGradeId}>
+              <SelectTrigger id="edit-game-grade">
+                <SelectValue placeholder="Select grade" />
+              </SelectTrigger>
+              <SelectContent>
+                {grades.map(g => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -81,7 +99,7 @@ export const EditGameDialog = ({ game, open, onOpenChange, onSave, isPending }: 
             <Input id="edit-warmup" type="number" min={0} max={120} value={warmupMinutes} onChange={e => setWarmupMinutes(Number(e.target.value))} />
             <p className="text-xs text-muted-foreground">How many minutes before start time to begin monitoring (0–120)</p>
           </div>
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full" disabled={isPending || !gradeId || gradeId === '__none__'}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>

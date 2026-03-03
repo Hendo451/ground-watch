@@ -14,6 +14,10 @@ import { TrainingManager } from '@/components/TrainingManager';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { ChevronDown } from 'lucide-react';
 import { Zap, CalendarClock, Shield, LogOut, Loader2, Calendar, Pencil, Trash2, LayoutGrid, List, Thermometer, Flame, AlertTriangle, Settings } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 
@@ -37,6 +41,7 @@ const Dashboard = () => {
   const [extractedGames, setExtractedGames] = useState<ExtractedGame[]>([]);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set());
 
   const handleGamesExtracted = (games: ExtractedGame[]) => {
     setExtractedGames(games);
@@ -51,6 +56,7 @@ const Dashboard = () => {
       }
     });
   };
+
 
   if (authLoading) {
     return (
@@ -74,6 +80,25 @@ const Dashboard = () => {
       reason: reason || undefined,
     });
   };
+
+  // Grade filter — games with no grade_id are always shown
+  const gradeFilterFn = (game: Game) =>
+    selectedGrades.size === 0 || !game.grade_id || selectedGrades.has(game.grade_id);
+
+  const toggleGrade = (id: string) => {
+    setSelectedGrades(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const gradeFilterLabel =
+    selectedGrades.size === 0
+      ? 'All grades'
+      : selectedGrades.size === 1
+      ? grades.find(g => selectedGrades.has(g.id))?.name ?? '1 selected'
+      : `${selectedGrades.size} selected`;
 
   // Categorize games
   const now = new Date();
@@ -113,6 +138,11 @@ const Dashboard = () => {
     return warmupStart > now;
   });
   const pastGames = games.filter(g => new Date(g.end_time) < now);
+
+  // Filtered versions applying the grade filter
+  const filteredActiveThisWeek = activeThisWeek.filter(gradeFilterFn);
+  const filteredUpcomingThisWeek = upcomingThisWeek.filter(gradeFilterFn);
+  const filteredGames = games.filter(gradeFilterFn);
 
   const statusCounts = {
     red: games.filter(g => g.status === 'red').length,
@@ -213,6 +243,42 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Grade filter — only shown when more than one grade exists */}
+        {grades.length > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Filter by grade:</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-normal">
+                  {gradeFilterLabel}
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-2" align="start">
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 px-1 py-1.5 rounded hover:bg-muted cursor-pointer">
+                    <Checkbox
+                      checked={selectedGrades.size === 0}
+                      onCheckedChange={() => setSelectedGrades(new Set())}
+                    />
+                    <span className="text-sm">All grades</span>
+                  </label>
+                  <div className="h-px bg-border my-1" />
+                  {grades.map(g => (
+                    <label key={g.id} className="flex items-center gap-2 px-1 py-1.5 rounded hover:bg-muted cursor-pointer">
+                      <Checkbox
+                        checked={selectedGrades.has(g.id)}
+                        onCheckedChange={() => toggleGrade(g.id)}
+                      />
+                      <span className="text-sm">{g.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -220,22 +286,22 @@ const Dashboard = () => {
         ) : (
           <>
             {/* Active Games */}
-            {activeThisWeek.length > 0 && (
+            {filteredActiveThisWeek.length > 0 && (
               <section>
                 <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Shield className="h-5 w-5 text-primary" />
-                  Active Games ({activeThisWeek.length})
+                  Active Games ({filteredActiveThisWeek.length})
                 </h2>
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {activeThisWeek.map(game => {
+                  {filteredActiveThisWeek.map(game => {
                     const venue = venues.find(v => v.id === game.venue_id);
                     const official = officials.find(o => o.venue_id === game.venue_id);
                     if (!venue) return null;
                     return (
-                      <ActiveGameCard 
-                        key={game.id} 
-                        game={game} 
-                        venue={venue} 
+                      <ActiveGameCard
+                        key={game.id}
+                        game={game}
+                        venue={venue}
                         official={official}
                         canEdit={isAdmin}
                         onEdit={setEditingGame}
@@ -250,19 +316,19 @@ const Dashboard = () => {
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
-                Upcoming Games ({upcomingThisWeek.length})
+                Upcoming Games ({filteredUpcomingThisWeek.length})
               </h2>
-              {upcomingThisWeek.length > 0 ? (
+              {filteredUpcomingThisWeek.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {upcomingThisWeek.map(game => {
+                  {filteredUpcomingThisWeek.map(game => {
                     const venue = venues.find(v => v.id === game.venue_id);
                     const official = officials.find(o => o.venue_id === game.venue_id);
                     if (!venue) return null;
                     return (
-                      <ActiveGameCard 
-                        key={game.id} 
-                        game={game} 
-                        venue={venue} 
+                      <ActiveGameCard
+                        key={game.id}
+                        game={game}
+                        venue={venue}
                         official={official}
                         canEdit={isAdmin}
                         onEdit={setEditingGame}
@@ -285,17 +351,17 @@ const Dashboard = () => {
                   Schedule
                 </h2>
                 <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-                  <Button 
-                    variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
-                    size="sm" 
+                  <Button
+                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                    size="sm"
                     className="h-7 px-2"
                     onClick={() => setViewMode('list')}
                   >
                     <List className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant={viewMode === 'calendar' ? 'secondary' : 'ghost'} 
-                    size="sm" 
+                  <Button
+                    variant={viewMode === 'calendar' ? 'secondary' : 'ghost'}
+                    size="sm"
                     className="h-7 px-2"
                     onClick={() => setViewMode('calendar')}
                   >
@@ -305,8 +371,8 @@ const Dashboard = () => {
               </div>
 
               {viewMode === 'calendar' ? (
-                <CalendarView 
-                  games={games}
+                <CalendarView
+                  games={filteredGames}
                   trainings={trainings}
                   trainingExceptions={trainingExceptions}
                   venues={venues}
@@ -330,15 +396,22 @@ const Dashboard = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {games.length === 0 ? (
+                        {filteredGames.length === 0 ? (
                           <tr>
                             <td colSpan={isAdmin ? 7 : 6} className="px-4 py-6 text-center text-muted-foreground">No games scheduled</td>
                           </tr>
                         ) : (
                           (() => {
-                            const sortedGames = [...activeGames, ...upcomingGames.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()), ...pastGames.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())];
+                            const filteredActive = filteredGames.filter(g => activeGames.some(a => a.id === g.id));
+                            const filteredUpcoming = filteredGames.filter(g => upcomingGames.some(u => u.id === g.id));
+                            const filteredPast = filteredGames.filter(g => pastGames.some(p => p.id === g.id));
+                            const sortedGames = [
+                              ...filteredActive,
+                              ...filteredUpcoming.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
+                              ...filteredPast.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()),
+                            ];
                             let lastMonth = '';
-                            
+
                             return sortedGames.map(game => {
                               const venue = venues.find(v => v.id === game.venue_id);
                               const grade = game.grade_id ? grades.find(g => g.id === game.grade_id) : null;
@@ -349,7 +422,7 @@ const Dashboard = () => {
                               const monthYear = startDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
                               const showMonthHeader = monthYear !== lastMonth;
                               lastMonth = monthYear;
-                              
+
                               return (
                                 <>
                                   {showMonthHeader && (
@@ -389,10 +462,10 @@ const Dashboard = () => {
                                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingGame(game)}>
                                             <Pencil className="h-3.5 w-3.5" />
                                           </Button>
-                                          <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-7 w-7 text-destructive hover:text-destructive" 
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 text-destructive hover:text-destructive"
                                             onClick={() => {
                                               if (confirm('Delete this game?')) {
                                                 deleteGame.mutate(game.id);
@@ -418,12 +491,12 @@ const Dashboard = () => {
             </section>
 
             {/* Trainings */}
-            <TrainingManager 
-              trainings={trainings} 
-              exceptions={trainingExceptions} 
-              venues={venues} 
-              grades={grades} 
-              isAdmin={isAdmin} 
+            <TrainingManager
+              trainings={trainings}
+              exceptions={trainingExceptions}
+              venues={venues}
+              grades={grades}
+              isAdmin={isAdmin}
             />
 
           </>
@@ -431,6 +504,7 @@ const Dashboard = () => {
 
         <EditGameDialog
           game={editingGame}
+          grades={grades}
           open={!!editingGame}
           onOpenChange={(open) => !open && setEditingGame(null)}
           onSave={(data) => {
