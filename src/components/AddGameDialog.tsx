@@ -10,6 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarPlus, CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Venue, Grade } from '@/hooks/useData';
+import { useSettings } from '@/hooks/useSettings';
 import { TimePicker } from './TimePicker';
 import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport } from '@/lib/sportCategories';
 import type { SportIntensity } from '@/lib/sportCategories';
@@ -22,6 +23,7 @@ interface AddGameDialogProps {
 }
 
 export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialogProps) => {
+  const { data: settings } = useSettings();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [venueId, setVenueId] = useState('');
@@ -31,6 +33,13 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
   const [endTime, setEndTime] = useState('');
   const [warmupMinutes, setWarmupMinutes] = useState('45');
   const [sport, setSport] = useState('');
+
+  // Seed sport from global default when settings load
+  useEffect(() => {
+    if (settings?.default_sport && !sport) {
+      setSport(settings.default_sport);
+    }
+  }, [settings?.default_sport]);
 
   // When venue changes, auto-set sport to venue's default
   useEffect(() => {
@@ -73,7 +82,7 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
     setStartTime('');
     setEndTime('');
     setWarmupMinutes('45');
-    setSport('');
+    setSport(settings?.default_sport ?? '');
   };
 
   const isValid = venueId && date && startTime && endTime;
@@ -91,12 +100,12 @@ export const AddGameDialog = ({ venues, grades, onAdd, isPending }: AddGameDialo
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="game-name">Game Name (optional)</Label>
+            <Label htmlFor="game-name">Game Name</Label>
             <Input id="game-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. U15 Semi-Final" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="game-grade">Grade (optional)</Label>
+              <Label htmlFor="game-grade">Grade</Label>
               <Select value={gradeId || '__none__'} onValueChange={setGradeId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select grade" />

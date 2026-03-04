@@ -7,7 +7,6 @@ import { EditGameDialog } from '@/components/EditGameDialog';
 import { ImportDrawDialog, ExtractedGame } from '@/components/ImportDrawDialog';
 import { ReviewImportDialog } from '@/components/ReviewImportDialog';
 import { StatusBadge } from '@/components/StatusBadge';
-import { GradeManager } from '@/components/GradeManager';
 import { AddTrainingDialog } from '@/components/AddTrainingDialog';
 import { CalendarView } from '@/components/CalendarView';
 import { TrainingManager } from '@/components/TrainingManager';
