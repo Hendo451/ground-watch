@@ -275,7 +275,11 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const conditions = xweatherData.response[0].ob;
+        const conditions = xweatherData.response[0]?.ob;
+        if (!conditions || conditions.tempC == null || conditions.humidity == null) {
+          console.error(`No observation data available for ${venue.name} — skipping heat check`);
+          continue;
+        }
         tempC = conditions.tempC;
         humidity = conditions.humidity;
         venueWeatherCache.set(venueId, { tempC, humidity, icon: conditions.icon });
@@ -369,7 +373,11 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const conditions = xweatherData.response[0].ob;
+        const conditions = xweatherData.response[0]?.ob;
+        if (!conditions || conditions.tempC == null || conditions.humidity == null) {
+          console.error(`No observation data available for ${venue.name} — skipping heat check`);
+          continue;
+        }
         tempC = conditions.tempC;
         humidity = conditions.humidity;
         venueWeatherCache.set(venueId, { tempC, humidity, icon: conditions.icon });
