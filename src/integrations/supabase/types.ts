@@ -143,6 +143,7 @@ export type Database = {
           official_id: string | null
           sent_at: string
           temp_c: number
+          training_id: string | null
           venue_id: string | null
         }
         Insert: {
@@ -155,6 +156,7 @@ export type Database = {
           official_id?: string | null
           sent_at?: string
           temp_c: number
+          training_id?: string | null
           venue_id?: string | null
         }
         Update: {
@@ -167,6 +169,7 @@ export type Database = {
           official_id?: string | null
           sent_at?: string
           temp_c?: number
+          training_id?: string | null
           venue_id?: string | null
         }
         Relationships: [
@@ -182,6 +185,13 @@ export type Database = {
             columns: ["official_id"]
             isOneToOne: false
             referencedRelation: "officials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "heat_alerts_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "trainings"
             referencedColumns: ["id"]
           },
           {
@@ -202,6 +212,7 @@ export type Database = {
           message: string
           official_id: string | null
           sent_at: string
+          training_id: string | null
           venue_id: string | null
         }
         Insert: {
@@ -212,6 +223,7 @@ export type Database = {
           message: string
           official_id?: string | null
           sent_at?: string
+          training_id?: string | null
           venue_id?: string | null
         }
         Update: {
@@ -222,6 +234,7 @@ export type Database = {
           message?: string
           official_id?: string | null
           sent_at?: string
+          training_id?: string | null
           venue_id?: string | null
         }
         Relationships: [
@@ -240,6 +253,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lightning_alerts_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "trainings"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lightning_alerts_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
@@ -252,34 +272,37 @@ export type Database = {
         Row: {
           detected_at: string
           distance_km: number
-          game_id: string
+          game_id: string | null
           id: string
           latitude: number
           longitude: number
           peak_amperage: number | null
           strike_type: string | null
+          training_id: string | null
           venue_id: string
         }
         Insert: {
           detected_at?: string
           distance_km: number
-          game_id: string
+          game_id?: string | null
           id?: string
           latitude: number
           longitude: number
           peak_amperage?: number | null
           strike_type?: string | null
+          training_id?: string | null
           venue_id: string
         }
         Update: {
           detected_at?: string
           distance_km?: number
-          game_id?: string
+          game_id?: string | null
           id?: string
           latitude?: number
           longitude?: number
           peak_amperage?: number | null
           strike_type?: string | null
+          training_id?: string | null
           venue_id?: string
         }
         Relationships: [
@@ -288,6 +311,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lightning_strikes_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "trainings"
             referencedColumns: ["id"]
           },
           {
@@ -420,43 +450,86 @@ export type Database = {
       }
       trainings: {
         Row: {
+          countdown_end: string | null
           created_at: string
           day_of_week: number
           end_date: string | null
           end_time: string
           grade_id: string | null
+          heat_status: Database["public"]["Enums"]["heat_status"]
           id: string
+          last_heat_check_at: string | null
+          last_humidity: number | null
+          last_strike_at: string | null
+          last_strike_distance: number | null
+          last_strike_lat: number | null
+          last_strike_lng: number | null
+          last_temp_c: number | null
+          lightning_forecast: string | null
           name: string
+          sport_intensity: Database["public"]["Enums"]["sport_intensity"] | null
           start_date: string
           start_time: string
+          status: Database["public"]["Enums"]["lightning_status"]
           updated_at: string
           venue_id: string | null
+          weather_icon: string | null
         }
         Insert: {
+          countdown_end?: string | null
           created_at?: string
           day_of_week: number
           end_date?: string | null
           end_time: string
           grade_id?: string | null
+          heat_status?: Database["public"]["Enums"]["heat_status"]
           id?: string
+          last_heat_check_at?: string | null
+          last_humidity?: number | null
+          last_strike_at?: string | null
+          last_strike_distance?: number | null
+          last_strike_lat?: number | null
+          last_strike_lng?: number | null
+          last_temp_c?: number | null
+          lightning_forecast?: string | null
           name: string
+          sport_intensity?:
+            | Database["public"]["Enums"]["sport_intensity"]
+            | null
           start_date: string
           start_time: string
+          status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string
           venue_id?: string | null
+          weather_icon?: string | null
         }
         Update: {
+          countdown_end?: string | null
           created_at?: string
           day_of_week?: number
           end_date?: string | null
           end_time?: string
           grade_id?: string | null
+          heat_status?: Database["public"]["Enums"]["heat_status"]
           id?: string
+          last_heat_check_at?: string | null
+          last_humidity?: number | null
+          last_strike_at?: string | null
+          last_strike_distance?: number | null
+          last_strike_lat?: number | null
+          last_strike_lng?: number | null
+          last_temp_c?: number | null
+          lightning_forecast?: string | null
           name?: string
+          sport_intensity?:
+            | Database["public"]["Enums"]["sport_intensity"]
+            | null
           start_date?: string
           start_time?: string
+          status?: Database["public"]["Enums"]["lightning_status"]
           updated_at?: string
           venue_id?: string | null
+          weather_icon?: string | null
         }
         Relationships: [
           {
