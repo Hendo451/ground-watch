@@ -52,11 +52,8 @@ export const LocationSearch = ({ onSelect, placeholder = "Search for a venue..."
         const params = new URLSearchParams({
           format: 'json',
           q: query,
-          limit: '8', // Fetch more to filter
+          limit: '8',
           addressdetails: '1',
-          countrycodes: 'au', // Prioritize Australia
-          viewbox: '112.9,-43.7,153.6,-10.7', // Australia bounding box
-          bounded: '0', // Don't strictly limit, just prefer
         });
         
         const response = await fetch(
