@@ -23,6 +23,25 @@ interface Game {
   };
 }
 
+interface Training {
+  id: string;
+  venue_id: string;
+  heat_status: HeatStatus;
+  sport_intensity: SportIntensity | null;
+  day_of_week: number;
+  start_time: string; // "HH:MM:SS"
+  end_time: string;   // "HH:MM:SS"
+  start_date: string; // "YYYY-MM-DD"
+  end_date: string | null;
+  venues: {
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    sport_intensity: SportIntensity;
+  };
+}
+
 interface XweatherConditionsResponse {
   success: boolean;
   error?: { code: string; description: string };
@@ -31,6 +50,7 @@ interface XweatherConditionsResponse {
       tempC: number;
       humidity: number;
       dateTimeISO: string;
+      icon?: string;
     };
   }>;
 }
@@ -104,6 +124,25 @@ function getAlertMessage(
   }
 }
 
+// Check if a training is currently in the heat monitoring window (30 min before start → end)
+function isTrainingHeatActive(training: Training, nowAEST: Date): boolean {
+  const dayOfWeek = nowAEST.getDay(); // 0=Sun, 6=Sat
+  if (training.day_of_week !== dayOfWeek) return false;
+
+  const todayStr = nowAEST.toISOString().split("T")[0];
+  if (training.start_date > todayStr) return false;
+  if (training.end_date && training.end_date < todayStr) return false;
+
+  // Compare current time against (start_time - 30min) and end_time
+  const [sh, sm] = training.start_time.split(":").map(Number);
+  const [eh, em] = training.end_time.split(":").map(Number);
+  const currentMinutes = nowAEST.getHours() * 60 + nowAEST.getMinutes();
+  const startMinutes = sh * 60 + sm - 30; // 30-min pre-check window
+  const endMinutes = eh * 60 + em;
+
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -149,21 +188,50 @@ Deno.serve(async (req) => {
       return now >= warmupStart;
     });
 
-    if (games.length === 0) {
+    // --- TRAINING MONITORING ---
+    // Use AEST time for day-of-week and date comparisons
+    const nowAEST = new Date(now.toLocaleString("en-AU", { timeZone: "Australia/Sydney" }));
+
+    // Fetch all trainings that have a venue assigned
+    const { data: allTrainings, error: trainingsError } = await supabase
+      .from("trainings")
+      .select(
+        "id, venue_id, heat_status, sport_intensity, day_of_week, start_time, end_time, start_date, end_date, venues(id, name, latitude, longitude, sport_intensity)"
+      )
+      .not("venue_id", "is", null);
+
+    if (trainingsError) {
+      console.error("Failed to fetch trainings:", trainingsError);
+    }
+
+    // Fetch today's training exceptions (cancellations)
+    const todayStr = nowAEST.toISOString().split("T")[0];
+    const { data: todayExceptions } = await supabase
+      .from("training_exceptions")
+      .select("training_id")
+      .eq("exception_date", todayStr)
+      .eq("is_cancelled", true);
+
+    const cancelledIds = new Set((todayExceptions || []).map((e: { training_id: string }) => e.training_id));
+
+    // Filter to heat-active trainings (30 min window before start)
+    const activeTrainings = (allTrainings || []).filter((t: Training) => {
+      if (cancelledIds.has(t.id)) return false;
+      if (!t.venues) return false;
+      return isTrainingHeatActive(t, nowAEST);
+    }) as unknown as Training[];
+
+    console.log(`Found ${games.length} active games, ${activeTrainings.length} active trainings for heat monitoring`);
+
+    if (games.length === 0 && activeTrainings.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No active games to monitor", checkedAt: nowISO }),
+        JSON.stringify({ message: "No active games or trainings to monitor", checkedAt: nowISO }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Found ${games.length} active games to monitor for heat`);
-
-    // Identify newly-active games (no heat check yet, or last check was from forecast only)
-    // These get priority processing for an immediate live conditions check
-    const newlyActive = (games as unknown as Game[]).filter(g => !g.heat_status || g.heat_status === 'low');
-    if (newlyActive.length > 0) {
-      console.log(`${newlyActive.length} game(s) entering active window — will fetch live conditions`);
-    }
+    // Build a cache of weather data per venue (shared between games and trainings)
+    const venueWeatherCache = new Map<string, { tempC: number; humidity: number; icon?: string }>();
 
     const results: {
       venueId: string;
@@ -173,6 +241,7 @@ Deno.serve(async (req) => {
       humidity?: number;
     }[] = [];
 
+    // --- PROCESS GAMES ---
     // Group games by venue to avoid duplicate API calls
     const venueGames = new Map<string, Game[]>();
     for (const game of games as unknown as Game[]) {
@@ -187,38 +256,39 @@ Deno.serve(async (req) => {
     for (const [venueId, venueGamesList] of venueGames) {
       const venue = venueGamesList[0].venues;
 
-      // Query Xweather for current conditions
-      const xweatherUrl = `https://data.api.xweather.com/conditions/${venue.latitude},${venue.longitude}?client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
+      let tempC: number;
+      let humidity: number;
 
-      console.log(`Checking heat conditions for ${venue.name}`);
+      if (venueWeatherCache.has(venueId)) {
+        const cached = venueWeatherCache.get(venueId)!;
+        tempC = cached.tempC;
+        humidity = cached.humidity;
+      } else {
+        // Query Xweather for current conditions
+        const xweatherUrl = `https://data.api.xweather.com/conditions/${venue.latitude},${venue.longitude}?client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
+        console.log(`Checking heat conditions for ${venue.name}`);
+        const xweatherRes = await fetch(xweatherUrl);
+        const xweatherData: XweatherConditionsResponse = await xweatherRes.json();
 
-      const xweatherRes = await fetch(xweatherUrl);
-      const xweatherData: XweatherConditionsResponse = await xweatherRes.json();
+        if (!xweatherData.success || !xweatherData.response || xweatherData.response.length === 0) {
+          console.error(`Failed to get conditions for ${venue.name}:`, xweatherData.error);
+          continue;
+        }
 
-      if (
-        !xweatherData.success ||
-        !xweatherData.response ||
-        xweatherData.response.length === 0
-      ) {
-        console.error(`Failed to get conditions for ${venue.name}:`, xweatherData.error);
-        continue;
+        const conditions = xweatherData.response[0].ob;
+        tempC = conditions.tempC;
+        humidity = conditions.humidity;
+        venueWeatherCache.set(venueId, { tempC, humidity, icon: conditions.icon });
       }
 
-      const conditions = xweatherData.response[0].ob;
-      const tempC = conditions.tempC;
-      const humidity = conditions.humidity;
-
-      console.log(
-        `${venue.name}: ${tempC}°C, ${humidity}% humidity, intensity: ${venue.sport_intensity}`
-      );
-
-      const newStatus = calculateHeatStatus(tempC, humidity, game.sport_intensity ?? venue.sport_intensity);
+      console.log(`${venue.name}: ${tempC}°C, ${humidity}% humidity`);
 
       // Update all games at this venue
       for (const game of venueGamesList) {
         const previousStatus = game.heat_status;
+        const intensity = game.sport_intensity ?? venue.sport_intensity;
+        const newStatus = calculateHeatStatus(tempC, humidity, intensity);
 
-        // Update game with new heat data
         await supabase
           .from("games")
           .update({
@@ -229,21 +299,12 @@ Deno.serve(async (req) => {
           })
           .eq("id", game.id);
 
-        // Send alert if status escalated to high or extreme
         if (
           (newStatus === "high" || newStatus === "extreme") &&
           previousStatus !== newStatus
         ) {
-          const gameIntensity = game.sport_intensity ?? venue.sport_intensity;
-          const alertMessage = getAlertMessage(
-            newStatus,
-            venue.name,
-            tempC,
-            humidity,
-            gameIntensity
-          );
+          const alertMessage = getAlertMessage(newStatus, venue.name, tempC, humidity, intensity);
 
-          // Send SMS alert
           await supabase.functions.invoke("send-sms-alert", {
             body: {
               venueId: venue.id,
@@ -253,7 +314,6 @@ Deno.serve(async (req) => {
             },
           });
 
-          // Log the heat alert
           await supabase.from("heat_alerts").insert({
             venue_id: venue.id,
             game_id: game.id,
@@ -269,10 +329,95 @@ Deno.serve(async (req) => {
       results.push({
         venueId: venue.id,
         venueName: venue.name,
-        status: newStatus,
+        status: calculateHeatStatus(tempC, humidity, venueGamesList[0].sport_intensity ?? venue.sport_intensity),
         tempC,
         humidity,
       });
+    }
+
+    // --- PROCESS TRAININGS ---
+    // Group trainings by venue (reuse weather cache)
+    const venueTrainings = new Map<string, Training[]>();
+    for (const training of activeTrainings) {
+      if (!training.venues) continue;
+      const venueId = training.venues.id;
+      if (!venueTrainings.has(venueId)) {
+        venueTrainings.set(venueId, []);
+      }
+      venueTrainings.get(venueId)!.push(training);
+    }
+
+    for (const [venueId, venueTrainingsList] of venueTrainings) {
+      const venue = venueTrainingsList[0].venues;
+
+      let tempC: number;
+      let humidity: number;
+
+      if (venueWeatherCache.has(venueId)) {
+        const cached = venueWeatherCache.get(venueId)!;
+        tempC = cached.tempC;
+        humidity = cached.humidity;
+        console.log(`Reusing weather cache for ${venue.name}`);
+      } else {
+        const xweatherUrl = `https://data.api.xweather.com/conditions/${venue.latitude},${venue.longitude}?client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
+        console.log(`Checking heat conditions for training at ${venue.name}`);
+        const xweatherRes = await fetch(xweatherUrl);
+        const xweatherData: XweatherConditionsResponse = await xweatherRes.json();
+
+        if (!xweatherData.success || !xweatherData.response || xweatherData.response.length === 0) {
+          console.error(`Failed to get conditions for ${venue.name}:`, xweatherData.error);
+          continue;
+        }
+
+        const conditions = xweatherData.response[0].ob;
+        tempC = conditions.tempC;
+        humidity = conditions.humidity;
+        venueWeatherCache.set(venueId, { tempC, humidity, icon: conditions.icon });
+      }
+
+      console.log(`Training venue ${venue.name}: ${tempC}°C, ${humidity}% humidity`);
+
+      for (const training of venueTrainingsList) {
+        const previousStatus = training.heat_status;
+        const intensity = training.sport_intensity ?? venue.sport_intensity;
+        const newStatus = calculateHeatStatus(tempC, humidity, intensity);
+
+        await supabase
+          .from("trainings")
+          .update({
+            heat_status: newStatus,
+            last_temp_c: tempC,
+            last_humidity: humidity,
+            last_heat_check_at: new Date().toISOString(),
+          })
+          .eq("id", training.id);
+
+        if (
+          (newStatus === "high" || newStatus === "extreme") &&
+          previousStatus !== newStatus
+        ) {
+          const alertMessage = getAlertMessage(newStatus, venue.name, tempC, humidity, intensity);
+
+          await supabase.functions.invoke("send-sms-alert", {
+            body: {
+              venueId: venue.id,
+              trainingId: training.id,
+              alertType: `heat_${newStatus}`,
+              message: alertMessage,
+            },
+          });
+
+          await supabase.from("heat_alerts").insert({
+            venue_id: venue.id,
+            training_id: training.id,
+            alert_type: `heat_${newStatus}`,
+            heat_status: newStatus,
+            temp_c: tempC,
+            humidity: humidity,
+            message: alertMessage,
+          });
+        }
+      }
     }
 
     return new Response(

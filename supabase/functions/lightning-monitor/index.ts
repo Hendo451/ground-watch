@@ -40,6 +40,177 @@ interface Game {
   };
 }
 
+interface Training {
+  id: string;
+  venue_id: string;
+  status: "green" | "orange" | "red";
+  countdown_end: string | null;
+  day_of_week: number;
+  start_time: string; // "HH:MM:SS"
+  end_time: string;   // "HH:MM:SS"
+  start_date: string; // "YYYY-MM-DD"
+  end_date: string | null;
+  venues: {
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    safe_zone_radius: number;
+  };
+}
+
+// Check if a training is currently active for lightning monitoring (no warmup buffer)
+function isTrainingLightningActive(training: Training, nowAEST: Date): boolean {
+  const dayOfWeek = nowAEST.getDay();
+  if (training.day_of_week !== dayOfWeek) return false;
+
+  const todayStr = nowAEST.toISOString().split("T")[0];
+  if (training.start_date > todayStr) return false;
+  if (training.end_date && training.end_date < todayStr) return false;
+
+  const [sh, sm] = training.start_time.split(":").map(Number);
+  const [eh, em] = training.end_time.split(":").map(Number);
+  const currentMinutes = nowAEST.getHours() * 60 + nowAEST.getMinutes();
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
+async function processLightningForEntity(
+  supabase: ReturnType<typeof createClient>,
+  entityId: string,
+  entityType: "game" | "training",
+  entityStatus: "green" | "orange" | "red",
+  entityCountdownEnd: string | null,
+  venue: { id: string; name: string; latitude: number; longitude: number; safe_zone_radius: number },
+  xweatherData: XweatherResponse,
+  XWEATHER_CLIENT_ID: string,
+  XWEATHER_CLIENT_SECRET: string
+): Promise<{ status: string; closestStrike?: number }> {
+  const table = entityType === "game" ? "games" : "trainings";
+  const idField = entityType === "game" ? "game_id" : "training_id";
+
+  if (!xweatherData.success || !xweatherData.response || xweatherData.response.length === 0) {
+    console.log(`No lightning detected near ${venue.name}`);
+
+    if (entityStatus === "red" && entityCountdownEnd) {
+      const countdownEnd = new Date(entityCountdownEnd);
+      if (new Date() >= countdownEnd) {
+        await supabase
+          .from(table)
+          .update({ status: "green", countdown_end: null })
+          .eq("id", entityId);
+
+        await supabase.functions.invoke("send-sms-alert", {
+          body: {
+            venueId: venue.id,
+            [idField]: entityId,
+            alertType: "all_clear",
+            message: `⚡ ALL CLEAR: Play may resume at ${venue.name}. 30-minute countdown complete with no further lightning detected.`,
+          },
+        });
+
+        return { status: "green (countdown expired)" };
+      }
+    } else if (entityStatus === "orange") {
+      await supabase
+        .from(table)
+        .update({ status: "green" })
+        .eq("id", entityId);
+      return { status: "green (cleared)" };
+    }
+
+    return { status: "green (clear)" };
+  }
+
+  // Insert strikes
+  const strikesToInsert = xweatherData.response.map((flash) => ({
+    [idField]: entityId,
+    venue_id: venue.id,
+    latitude: flash.loc.lat,
+    longitude: flash.loc.long,
+    distance_km: flash.relativeTo.distanceKM,
+    detected_at: flash.ob.dateTimeISO,
+    strike_type: flash.ob.type || null,
+    peak_amperage: flash.ob.peakAmperage || null,
+  }));
+
+  if (strikesToInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from("lightning_strikes")
+      .insert(strikesToInsert);
+    if (insertError) {
+      console.error(`Failed to insert strikes for ${venue.name}:`, insertError);
+    } else {
+      console.log(`Inserted ${strikesToInsert.length} strikes for ${venue.name}`);
+    }
+  }
+
+  const closestStrike = xweatherData.response.reduce(
+    (closest, flash) =>
+      flash.relativeTo.distanceKM < closest.relativeTo.distanceKM ? flash : closest,
+    xweatherData.response[0]
+  );
+
+  const distanceKm = closestStrike.relativeTo.distanceKM;
+  const safeZone = venue.safe_zone_radius || 16;
+
+  let newStatus: "green" | "orange" | "red" = entityStatus;
+  let countdownEnd = entityCountdownEnd;
+  let alertType: string | null = null;
+  let alertMessage: string | null = null;
+
+  if (distanceKm < safeZone) {
+    newStatus = "red";
+    countdownEnd = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    if (entityStatus !== "red") {
+      alertType = "stoppage";
+      alertMessage = `🔴 STOPPAGE: Lightning detected ${distanceKm.toFixed(1)}km from ${venue.name}. Evacuate to safe shelter immediately. 30-minute countdown started.`;
+    } else {
+      alertType = "countdown_reset";
+      alertMessage = `⚡ COUNTDOWN RESET: New strike ${distanceKm.toFixed(1)}km from ${venue.name}. 30-minute countdown restarted.`;
+    }
+  } else if (distanceKm <= 30) {
+    if (entityStatus === "green") {
+      newStatus = "orange";
+      alertType = "warning";
+      alertMessage = `🟠 WARNING: Lightning detected ${distanceKm.toFixed(1)}km from ${venue.name}. Monitor conditions closely.`;
+    } else if (entityStatus === "red") {
+      newStatus = "red";
+    }
+  }
+
+  if (newStatus !== entityStatus || countdownEnd !== entityCountdownEnd) {
+    await supabase
+      .from(table)
+      .update({
+        status: newStatus,
+        countdown_end: countdownEnd,
+        last_strike_distance: distanceKm,
+        last_strike_at: closestStrike.ob.dateTimeISO,
+        last_strike_lat: closestStrike.loc.lat,
+        last_strike_lng: closestStrike.loc.long,
+      })
+      .eq("id", entityId);
+  }
+
+  if (alertType && alertMessage) {
+    await supabase.functions.invoke("send-sms-alert", {
+      body: {
+        venueId: venue.id,
+        [idField]: entityId,
+        alertType,
+        message: alertMessage,
+        distanceKm,
+      },
+    });
+  }
+
+  return { status: newStatus, closestStrike: distanceKm };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -60,181 +231,100 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get active games with venue data
-    const now = new Date().toISOString();
-    console.log("Checking for active games at:", now);
-    
+    const now = new Date();
+    const nowISO = now.toISOString();
+    console.log("Checking for active games and trainings at:", nowISO);
+
+    // --- GAMES ---
     const { data: games, error: gamesError } = await supabase
       .from("games")
       .select("id, venue_id, status, countdown_end, venues(id, name, latitude, longitude, safe_zone_radius)")
-      .lte("start_time", now)
-      .gte("end_time", now);
-
-    console.log("Games query result:", { games, error: gamesError });
+      .lte("start_time", nowISO)
+      .gte("end_time", nowISO);
 
     if (gamesError) throw gamesError;
-    if (!games || games.length === 0) {
+
+    // --- TRAININGS ---
+    const nowAEST = new Date(now.toLocaleString("en-AU", { timeZone: "Australia/Sydney" }));
+    const todayStr = nowAEST.toISOString().split("T")[0];
+
+    const { data: allTrainings, error: trainingsError } = await supabase
+      .from("trainings")
+      .select("id, venue_id, status, countdown_end, day_of_week, start_time, end_time, start_date, end_date, venues(id, name, latitude, longitude, safe_zone_radius)")
+      .not("venue_id", "is", null);
+
+    if (trainingsError) {
+      console.error("Failed to fetch trainings:", trainingsError);
+    }
+
+    const { data: todayExceptions } = await supabase
+      .from("training_exceptions")
+      .select("training_id")
+      .eq("exception_date", todayStr)
+      .eq("is_cancelled", true);
+
+    const cancelledIds = new Set((todayExceptions || []).map((e: { training_id: string }) => e.training_id));
+
+    const activeTrainings = (allTrainings || []).filter((t: Training) => {
+      if (cancelledIds.has(t.id)) return false;
+      if (!t.venues) return false;
+      return isTrainingLightningActive(t, nowAEST);
+    }) as unknown as Training[];
+
+    console.log(`Found ${(games || []).length} active games, ${activeTrainings.length} active trainings for lightning monitoring`);
+
+    if ((!games || games.length === 0) && activeTrainings.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No active games to monitor", checkedAt: now }),
+        JSON.stringify({ message: "No active games or trainings to monitor", checkedAt: nowISO }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Found ${games.length} active games to monitor`);
+    // Cache lightning API results per venue (shared between games and trainings)
+    const venueLightningCache = new Map<string, XweatherResponse>();
 
     const results: { venueId: string; venueName: string; status: string; closestStrike?: number }[] = [];
 
-    for (const game of games as unknown as Game[]) {
+    // Helper to fetch lightning data for a venue (with caching)
+    async function fetchLightningForVenue(venue: { id: string; name: string; latitude: number; longitude: number; safe_zone_radius: number }): Promise<XweatherResponse> {
+      if (venueLightningCache.has(venue.id)) {
+        return venueLightningCache.get(venue.id)!;
+      }
+      const radius = 30;
+      const xweatherUrl = `https://data.api.xweather.com/lightning/closest?p=${venue.latitude},${venue.longitude}&radius=${radius}km&limit=10&client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
+      console.log(`Checking lightning for ${venue.name}`);
+      const xweatherRes = await fetch(xweatherUrl);
+      const data: XweatherResponse = await xweatherRes.json();
+      venueLightningCache.set(venue.id, data);
+      return data;
+    }
+
+    // Process games
+    for (const game of (games || []) as unknown as Game[]) {
       const venue = game.venues;
       if (!venue) continue;
 
-      // Query Xweather for lightning within 30km (orange warning zone)
-      const radius = 30; // km - captures both warning (16-30km) and danger (<16km) zones
-      const xweatherUrl = `https://data.api.xweather.com/lightning/closest?p=${venue.latitude},${venue.longitude}&radius=${radius}km&limit=10&client_id=${XWEATHER_CLIENT_ID}&client_secret=${XWEATHER_CLIENT_SECRET}`;
-
-      console.log(`Checking lightning for ${venue.name} at ${venue.latitude},${venue.longitude}`);
-      
-      const xweatherRes = await fetch(xweatherUrl);
-      const xweatherData: XweatherResponse = await xweatherRes.json();
-      
-      console.log(`Xweather response for ${venue.name}:`, JSON.stringify(xweatherData).substring(0, 500));
-
-      if (!xweatherData.success || !xweatherData.response || xweatherData.response.length === 0) {
-        // No lightning detected
-        console.log(`No lightning detected near ${venue.name}`);
-        // No lightning detected - check if we can go back to green
-        if (game.status === "red" && game.countdown_end) {
-          const countdownEnd = new Date(game.countdown_end);
-          if (new Date() >= countdownEnd) {
-            // Countdown expired, go back to green
-            await supabase
-              .from("games")
-              .update({ status: "green", countdown_end: null })
-              .eq("id", game.id);
-
-            results.push({ venueId: venue.id, venueName: venue.name, status: "green (countdown expired)" });
-
-            // Send all-clear alert
-            await supabase.functions.invoke("send-sms-alert", {
-              body: {
-                venueId: venue.id,
-                alertType: "all_clear",
-                message: `⚡ ALL CLEAR: Play may resume at ${venue.name}. 30-minute countdown complete with no further lightning detected.`,
-              },
-            });
-          }
-        } else if (game.status === "orange") {
-          // No lightning in range, back to green
-          await supabase
-            .from("games")
-            .update({ status: "green" })
-            .eq("id", game.id);
-          results.push({ venueId: venue.id, venueName: venue.name, status: "green (cleared)" });
-        } else {
-          // Already green, no action needed
-          results.push({ venueId: venue.id, venueName: venue.name, status: "green (clear)" });
-        }
-        continue;
-      }
-
-      // Insert all detected strikes into lightning_strikes table
-      const strikesToInsert = xweatherData.response.map((flash) => ({
-        game_id: game.id,
-        venue_id: venue.id,
-        latitude: flash.loc.lat,
-        longitude: flash.loc.long,
-        distance_km: flash.relativeTo.distanceKM,
-        detected_at: flash.ob.dateTimeISO,
-        strike_type: flash.ob.type || null,
-        peak_amperage: flash.ob.peakAmperage || null,
-      }));
-
-      if (strikesToInsert.length > 0) {
-        const { error: insertError } = await supabase
-          .from("lightning_strikes")
-          .insert(strikesToInsert);
-        if (insertError) {
-          console.error(`Failed to insert strikes for ${venue.name}:`, insertError);
-        } else {
-          console.log(`Inserted ${strikesToInsert.length} strikes for ${venue.name}`);
-        }
-      }
-
-      // Find closest strike
-      const closestStrike = xweatherData.response.reduce(
-        (closest, flash) =>
-          flash.relativeTo.distanceKM < closest.relativeTo.distanceKM ? flash : closest,
-        xweatherData.response[0]
+      const xweatherData = await fetchLightningForVenue(venue);
+      const result = await processLightningForEntity(
+        supabase, game.id, "game", game.status, game.countdown_end,
+        venue, xweatherData, XWEATHER_CLIENT_ID!, XWEATHER_CLIENT_SECRET!
       );
 
-      const distanceKm = closestStrike.relativeTo.distanceKM;
-      const safeZone = venue.safe_zone_radius || 16;
+      results.push({ venueId: venue.id, venueName: venue.name, ...result });
+    }
 
-      let newStatus: "green" | "orange" | "red" = game.status;
-      let countdownEnd = game.countdown_end;
-      let alertType: string | null = null;
-      let alertMessage: string | null = null;
+    // Process trainings
+    for (const training of activeTrainings) {
+      const venue = training.venues;
+      if (!venue) continue;
 
-      if (distanceKm < safeZone) {
-        // RED - Stoppage required
-        newStatus = "red";
-        // Reset 30-minute countdown on every strike within safe zone
-        countdownEnd = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      const xweatherData = await fetchLightningForVenue(venue);
+      const result = await processLightningForEntity(
+        supabase, training.id, "training", training.status, training.countdown_end,
+        venue, xweatherData, XWEATHER_CLIENT_ID!, XWEATHER_CLIENT_SECRET!
+      );
 
-        if (game.status !== "red") {
-          alertType = "stoppage";
-          alertMessage = `🔴 STOPPAGE: Lightning detected ${distanceKm.toFixed(1)}km from ${venue.name}. Evacuate to safe shelter immediately. 30-minute countdown started.`;
-        } else {
-          // Already in red, countdown reset
-          alertType = "countdown_reset";
-          alertMessage = `⚡ COUNTDOWN RESET: New strike ${distanceKm.toFixed(1)}km from ${venue.name}. 30-minute countdown restarted.`;
-        }
-      } else if (distanceKm <= 30) {
-        // ORANGE - Warning
-        if (game.status === "green") {
-          newStatus = "orange";
-          alertType = "warning";
-          alertMessage = `🟠 WARNING: Lightning detected ${distanceKm.toFixed(1)}km from ${venue.name}. Monitor conditions closely.`;
-        } else if (game.status === "red") {
-          // Stay in red if already in stoppage
-          newStatus = "red";
-        }
-      }
-
-      // Update game status if changed
-      if (newStatus !== game.status || countdownEnd !== game.countdown_end) {
-          await supabase
-          .from("games")
-          .update({
-            status: newStatus,
-            countdown_end: countdownEnd,
-            last_strike_distance: distanceKm,
-            last_strike_at: closestStrike.ob.dateTimeISO,
-            last_strike_lat: closestStrike.loc.lat,
-            last_strike_lng: closestStrike.loc.long,
-          })
-          .eq("id", game.id);
-      }
-
-      // Send alert if needed
-      if (alertType && alertMessage) {
-        await supabase.functions.invoke("send-sms-alert", {
-          body: {
-            venueId: venue.id,
-            gameId: game.id,
-            alertType,
-            message: alertMessage,
-            distanceKm,
-          },
-        });
-      }
-
-      results.push({
-        venueId: venue.id,
-        venueName: venue.name,
-        status: newStatus,
-        closestStrike: distanceKm,
-      });
+      results.push({ venueId: venue.id, venueName: `${venue.name} (training)`, ...result });
     }
 
     return new Response(

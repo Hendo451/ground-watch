@@ -68,6 +68,19 @@ export interface Training {
   end_time: string;
   start_date: string;
   end_date: string | null;
+  sport_intensity: SportIntensity | null;
+  heat_status: HeatStatus;
+  last_temp_c: number | null;
+  last_humidity: number | null;
+  last_heat_check_at: string | null;
+  weather_icon: string | null;
+  status: 'green' | 'orange' | 'red';
+  countdown_end: string | null;
+  last_strike_distance: number | null;
+  last_strike_at: string | null;
+  last_strike_lat: number | null;
+  last_strike_lng: number | null;
+  lightning_forecast: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -243,6 +256,57 @@ export const useLightningStrikes = (gameId: string | null) => {
   });
 };
 
+export const useTrainingLightningStrikes = (trainingId: string | null) => {
+  const queryClient = useQueryClient();
+
+  useQuery({
+    queryKey: ['training_lightning_strikes', trainingId],
+    enabled: !!trainingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lightning_strikes')
+        .select('*')
+        .eq('training_id', trainingId!)
+        .order('detected_at', { ascending: false });
+      if (error) throw error;
+      return data as LightningStrike[];
+    },
+  });
+
+  useQuery({
+    queryKey: ['training_lightning_strikes_realtime_sub', trainingId],
+    enabled: !!trainingId,
+    queryFn: () => {
+      const channel = supabase
+        .channel(`training-strikes-${trainingId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'lightning_strikes', filter: `training_id=eq.${trainingId}` },
+          () => {
+            queryClient.invalidateQueries({ queryKey: ['training_lightning_strikes', trainingId] });
+          }
+        )
+        .subscribe();
+      return { channel };
+    },
+    staleTime: Infinity,
+  });
+
+  return useQuery({
+    queryKey: ['training_lightning_strikes', trainingId],
+    enabled: !!trainingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lightning_strikes')
+        .select('*')
+        .eq('training_id', trainingId!)
+        .order('detected_at', { ascending: false });
+      if (error) throw error;
+      return data as LightningStrike[];
+    },
+  });
+};
+
 export const useUpdateGame = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -383,15 +447,16 @@ export const useTrainings = () => {
 export const useAddTraining = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (training: { 
-      name: string; 
-      venue_id?: string; 
+    mutationFn: async (training: {
+      name: string;
+      venue_id?: string;
       grade_id?: string;
-      day_of_week: number; 
-      start_time: string; 
-      end_time: string; 
+      day_of_week: number;
+      start_time: string;
+      end_time: string;
       start_date: string;
       end_date?: string;
+      sport_intensity?: SportIntensity;
     }) => {
       const { data, error } = await supabase.from('trainings').insert(training).select().single();
       if (error) throw error;
@@ -410,16 +475,17 @@ export const useAddTraining = () => {
 export const useUpdateTraining = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (training: { 
-      id: string; 
-      name?: string; 
-      venue_id?: string; 
-      grade_id?: string;
-      day_of_week?: number; 
-      start_time?: string; 
+    mutationFn: async (training: {
+      id: string;
+      name?: string;
+      venue_id?: string | null;
+      grade_id?: string | null;
+      day_of_week?: number;
+      start_time?: string;
       end_time?: string;
       start_date?: string;
       end_date?: string | null;
+      sport_intensity?: SportIntensity | null;
     }) => {
       const { id, ...updates } = training;
       const { data, error } = await supabase.from('trainings').update(updates).eq('id', id).select().single();

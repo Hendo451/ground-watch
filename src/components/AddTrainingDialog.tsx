@@ -11,6 +11,7 @@ import { Dumbbell, CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Venue, Grade } from '@/hooks/useData';
 import { TimePicker } from './TimePicker';
+import { SPORT_CATEGORIES, CATEGORY_LABELS, getCategoryForSport } from '@/lib/sportCategories';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -26,6 +27,7 @@ interface AddTrainingDialogProps {
     end_time: string;
     start_date: string;
     end_date?: string;
+    sport_intensity?: string;
   }) => void;
   isPending?: boolean;
 }
@@ -39,7 +41,10 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [startDate, setStartDate] = useState<Date>();
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDate, setEndDate] = useState<Date>();
+  const [endDateOpen, setEndDateOpen] = useState(false);
+  const [sport, setSport] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +58,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
       end_time: endTime,
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: endDate ? format(endDate, 'yyyy-MM-dd') : undefined,
+      sport_intensity: sport ? getCategoryForSport(sport) : undefined,
     });
     setOpen(false);
     resetForm();
@@ -67,7 +73,10 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
     setEndTime('');
     setStartDate(undefined);
     setEndDate(undefined);
+    setSport('');
   };
+
+  const derivedCategory = sport ? getCategoryForSport(sport) : undefined;
 
   const isValid = name && dayOfWeek && startTime && endTime && startDate;
 
@@ -96,13 +105,12 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="training-grade">Grade (optional)</Label>
+              <Label htmlFor="training-grade">Grade</Label>
               <Select value={gradeId || '__none__'} onValueChange={setGradeId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select grade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">No grade</SelectItem>
                   {grades.map(g => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
@@ -110,19 +118,35 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="training-venue">Venue (optional)</Label>
+              <Label htmlFor="training-venue">Venue</Label>
               <Select value={venueId || '__none__'} onValueChange={setVenueId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select venue" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">No venue</SelectItem>
                   {venues.map(v => (
                     <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sport</Label>
+            <Select value={sport} onValueChange={setSport}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select sport" />
+              </SelectTrigger>
+              <SelectContent>
+                {SPORT_CATEGORIES.map(s => (
+                  <SelectItem key={s.sport} value={s.sport}>{s.sport}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {derivedCategory && (
+              <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[derivedCategory]}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -153,7 +177,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Starts From</Label>
-              <Popover>
+              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -170,7 +194,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
                   <Calendar
                     mode="single"
                     selected={startDate}
-                    onSelect={setStartDate}
+                    onSelect={(d) => { setStartDate(d); setStartDateOpen(false); }}
                     initialFocus
                     className="pointer-events-auto"
                   />
@@ -179,7 +203,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
             </div>
             <div className="space-y-2">
               <Label>Ends</Label>
-              <Popover>
+              <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -196,7 +220,7 @@ export const AddTrainingDialog = ({ venues, grades, onAdd, isPending }: AddTrain
                   <Calendar
                     mode="single"
                     selected={endDate}
-                    onSelect={setEndDate}
+                    onSelect={(d) => { setEndDate(d); setEndDateOpen(false); }}
                     initialFocus
                     className="pointer-events-auto"
                   />
